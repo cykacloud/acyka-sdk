@@ -1,10 +1,20 @@
-# acyka
+<div align="center">
 
-The API, its documentation, and client libraries for six languages.
+# acyka · sdk
+
+**The API, its documentation, and client libraries for six languages.**
+
+Everything here is generated from, or written against, one file.
+
+[**dev.acyka.cc →**](https://dev.acyka.cc)
+
+</div>
+
+---
 
 Everything here is generated from or written against one file: **`openapi.json`**,
 which comes out of the server itself. `acyka-api spec` in
-[`acyka/acyka`](https://github.com/cykacloud/acyka) writes it from
+[`acyka/api`](https://lab.cyka.cloud/acyka/api) writes it from
 annotations that sit on the handlers, and a test there drives every path in it
 against the real router — so a route that changes shape changes this file in the
 same commit, and a path that does not exist cannot be described.
@@ -135,7 +145,7 @@ and every control.
 | `publish.yml` | a `v*` tag | npm, PyPI, crates.io, Maven Central, NuGet, and a tarball of the C++ headers |
 
 These run on GitHub's own runners, which is the opposite of the answer
-`acyka/acyka` reached — and for two reasons. Its three self-hosted runners
+`acyka/api` reached — and for two reasons. Its three self-hosted runners
 are registered to *that* repository rather than to the organisation, so a job
 here queues for a machine that will never take it; and the hosted image already
 carries every toolchain this needs, while the warm cargo `target/` that makes
@@ -151,7 +161,7 @@ that quietly did nothing:
 | secret | wanted by |
 |---|---|
 | `CYKA_NPM_TOKEN` | the `docs` job and the image build — the group's `npm read` deploy token, which is how `@cyka/ui` is installed |
-| `SSH_HOST`, `SSH_USER`, `SSH_KEY` | `deploy.yml` — the same three `acyka/acyka` deploys with |
+| `SSH_HOST`, `SSH_USER`, `SSH_KEY` | `deploy.yml` — the same three `acyka/api` deploys with |
 | `NPM_TOKEN` | `publish.yml` |
 | `PYPI_TOKEN` | `publish.yml` |
 | `CARGO_REGISTRY_TOKEN` | `publish.yml` |
@@ -191,3 +201,22 @@ bun .github/scripts/endpoints.ts http://localhost:3001
 A client should really read `/.well-known/openid-configuration` itself, which is
 what the guide says and what the playground does. The constants exist to save the
 common case a round trip.
+
+## Where it sits
+
+This is one repository of the `acyka` group: the reference page and a generated
+client are the same document read twice, so they live together — but the api
+itself, the site, the phones, the bot and the box each have their own.
+
+`apps/docs` is the only service here that runs anywhere: its image is built by
+this repository's own pipeline and pulled by the box that
+[`infra`](https://lab.cyka.cloud/acyka/infra) describes, behind the `docs`
+profile in `compose.yaml`. That profile is the seam, and it is load-bearing: a
+deploy there ends with a bare `docker compose up -d --no-build`, which would
+otherwise reach for an image this repository may not have built yet.
+
+[api](https://lab.cyka.cloud/acyka/api) · [web](https://lab.cyka.cloud/acyka/web) · [apple](https://lab.cyka.cloud/acyka/apple) · [android](https://lab.cyka.cloud/acyka/android) · [telegram](https://lab.cyka.cloud/acyka/telegram) · [infra](https://lab.cyka.cloud/acyka/infra) · [ci](https://lab.cyka.cloud/acyka/ci)
+
+<div align="center">
+<sub>One contract, six libraries, no hand-written drift.</sub>
+</div>
