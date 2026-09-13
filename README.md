@@ -218,6 +218,8 @@ registry each language already uses:
 | C# | `Acyka` | NuGet |
 | C++ | header-only | a tarball on the release page, or CMake `FetchContent` |
 
+Releasing them is [`RELEASING.md`](RELEASING.md).
+
 ## Contributing
 
 The contract is not edited here: `openapi.json` is read off the live server,
