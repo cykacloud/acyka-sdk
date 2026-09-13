@@ -107,7 +107,7 @@
 		<p>
 			<a href="https://acyka.cc">acyka.cc</a>
 			·
-			<a href="https://github.com/cykacloud/acyka-api">the source</a>
+			<a href="https://github.com/cykacloud/acyka-sdk">the source</a>
 			·
 			<a href="/reference">{data.counts.operations} operations, {data.counts.models} shapes</a>
 		</p>

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A client for the acyka API: the catalogue, profiles, lists and writing.",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/cykacloud/acyka-api.git", "directory": "packages/typescript" },
+  "repository": { "type": "git", "url": "git+https://github.com/cykacloud/acyka-sdk.git", "directory": "packages/typescript" },
   "homepage": "https://dev.acyka.cc",
   "type": "module",
   "types": "./dist/index.d.ts",

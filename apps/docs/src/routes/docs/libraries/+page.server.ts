@@ -23,7 +23,7 @@ dotnet add package Acyka
 
 # C++ — CMakeLists.txt, header-only
 FetchContent_Declare(acyka
-    GIT_REPOSITORY https://github.com/cykacloud/acyka-api.git
+    GIT_REPOSITORY https://github.com/cykacloud/acyka-sdk.git
     GIT_TAG        v1.0.0
     SOURCE_SUBDIR  packages/cpp)`)
 		})

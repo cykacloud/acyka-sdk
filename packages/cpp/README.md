@@ -12,7 +12,7 @@ integration:
 ```cmake
 include(FetchContent)
 FetchContent_Declare(acyka
-    GIT_REPOSITORY https://github.com/cykacloud/acyka-api.git
+    GIT_REPOSITORY https://github.com/cykacloud/acyka-sdk.git
     GIT_TAG        v1.0.0
     SOURCE_SUBDIR  packages/cpp)
 FetchContent_MakeAvailable(acyka)

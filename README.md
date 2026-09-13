@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src=".gitlab/logo.svg" width="76" alt="acyka sdk" />
+<img src="assets/logo.svg" width="76" alt="acyka sdk" />
 
 # acyka · sdk
 
@@ -15,8 +15,7 @@ Everything here is generated from, or written against, one file.
 ---
 
 Everything here is generated from or written against one file: **`openapi.json`**,
-which comes out of the server itself. `acyka-api spec` in
-[`acyka/api`](https://lab.cyka.cloud/acyka/api) writes it from
+which comes out of the server itself. The server writes it from
 annotations that sit on the handlers, and a test there drives every path in it
 against the real router — so a route that changes shape changes this file in the
 same commit, and a path that does not exist cannot be described.
@@ -204,20 +203,45 @@ A client should really read `/.well-known/openid-configuration` itself, which is
 what the guide says and what the playground does. The constants exist to save the
 common case a round trip.
 
-## Where it sits
+## Releases
 
-This is one repository of the `acyka` group: the reference page and a generated
-client are the same document read twice, so they live together — but the api
-itself, the site, the phones, the bot and the box each have their own.
+Every library is versioned together and published from one tag, so
+`acyka@1.4.0` means the same contract in all six languages. They go to the
+registry each language already uses:
 
-`apps/docs` is the only service here that runs anywhere: its image is built by
-this repository's own pipeline and pulled by the box that
-[`infra`](https://lab.cyka.cloud/acyka/infra) describes, behind the `docs`
-profile in `compose.yaml`. That profile is the seam, and it is load-bearing: a
-deploy there ends with a bare `docker compose up -d --no-build`, which would
-otherwise reach for an image this repository may not have built yet.
+| language | package | registry |
+|---|---|---|
+| TypeScript | `@acyka/api` | npm |
+| Python | `acyka` | PyPI |
+| Rust | `acyka` | crates.io |
+| Kotlin | `cc.acyka:acyka` | Maven Central |
+| C# | `Acyka` | NuGet |
+| C++ | header-only | a tarball on the release page, or CMake `FetchContent` |
 
-[api](https://lab.cyka.cloud/acyka/api) · [web](https://lab.cyka.cloud/acyka/web) · [apple](https://lab.cyka.cloud/acyka/apple) · [android](https://lab.cyka.cloud/acyka/android) · [telegram](https://lab.cyka.cloud/acyka/telegram) · [infra](https://lab.cyka.cloud/acyka/infra) · [ci](https://lab.cyka.cloud/acyka/ci)
+## Contributing
+
+The contract is not edited here: `openapi.json` is read off the live server,
+and the six libraries are `bun run generate`. So a pull request that changes a
+generated file by hand will be reverted by the next generator run — what is
+worth changing is in `tools/` (the emitters) and in the hand-written transport
+each language carries, which is everything that makes a client pleasant rather
+than merely correct.
+
+If the document itself is wrong — a shape that does not match what the server
+actually sends, a route that is missing — open an issue with the request and
+the response you saw. That is a bug in the api, and this repository is where it
+gets noticed.
+
+## Licence and support
+
+The api it speaks to is [acyka](https://acyka.cc), and using it needs nothing
+but a client id you register at
+[acyka.cc/settings/applications](https://acyka.cc/settings/applications). The
+reference, the playground and the guides are at
+[**dev.acyka.cc**](https://dev.acyka.cc); `openapi.json` is served without a
+token at
+[`api.acyka.cc/api/v1/openapi.json`](https://api.acyka.cc/api/v1/openapi.json),
+so a language none of the six covers is one `openapi-generator` away.
 
 <div align="center">
 <sub>One contract, six libraries, no hand-written drift.</sub>

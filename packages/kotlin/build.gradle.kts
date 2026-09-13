@@ -91,8 +91,8 @@ publishing {
                     }
                 }
                 scm {
-                    url.set("https://github.com/cykacloud/acyka-api")
-                    connection.set("scm:git:https://github.com/cykacloud/acyka-api.git")
+                    url.set("https://github.com/cykacloud/acyka-sdk")
+                    connection.set("scm:git:https://github.com/cykacloud/acyka-sdk.git")
                 }
             }
         }

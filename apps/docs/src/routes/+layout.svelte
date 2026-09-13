@@ -118,7 +118,7 @@
 
 		<a
 			class="out"
-			href="https://github.com/cykacloud/acyka-api"
+			href="https://github.com/cykacloud/acyka-sdk"
 			target="_blank"
 			rel="noreferrer"
 			aria-label="the source on GitHub"

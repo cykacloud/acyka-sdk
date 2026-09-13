@@ -147,6 +147,6 @@
 	<p>
 		Every library exposes its transport, so a route that exists and has not been generated yet is
 		still reachable — and an issue at
-		<a href="https://github.com/cykacloud/acyka-api">cykacloud/acyka-api</a> is the way to say so.
+		<a href="https://github.com/cykacloud/acyka-sdk">cykacloud/acyka-sdk</a> is the way to say so.
 	</p>
 </Guide>
