@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src=".gitlab/logo.svg" width="76" alt="acyka sdk" />
+
 # acyka · sdk
 
 **The API, its documentation, and client libraries for six languages.**

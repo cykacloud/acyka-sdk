@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="256" height="256" role="img" aria-label="acyka sdk">
+  <title>acyka · sdk</title>
+  <defs>
+    <linearGradient id="b" x1="0" y1="0" x2=".6" y2="1">
+      <stop offset="0" stop-color="#bc93ff"/><stop offset="1" stop-color="#7e31ff"/>
+    </linearGradient>
+  </defs>
+  <rect x=".6" y=".6" width="22.8" height="22.8" rx="5.4" fill="#141418" stroke="#2f2740" stroke-width=".9"/>
+  <g transform="translate(12 12) scale(.72) translate(-12 -12)"
+     fill="none" stroke="url(#b)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 5.4A2 2 0 0 1 6 3.4h12a2 2 0 0 1 2 2v13.2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+    <path d="M8.2 3.4v17.2" />
+    <path d="M13.4 9.6l-2 2.6 2 2.6M17 9.6l2 2.6-2 2.6" stroke-width="1.4" opacity=".75" />
+  </g>
+</svg>
