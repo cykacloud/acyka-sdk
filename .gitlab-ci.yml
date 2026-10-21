@@ -209,30 +209,16 @@ images:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_PIPELINE_SOURCE == 'web'
+  variables:
+    IMAGE: $DOCS_IMAGE
+    IMAGE_PUSH: '1'
   script:
-    # **Two directories, and they are not the same one.** `DOCKER_CONFIG` is per
-    # job so parallel pushes do not log each other out; `BUILDX_CONFIG` is where
-    # buildx writes down which builders exist, and it defaults to
-    # `$DOCKER_CONFIG/buildx` — so isolating the credential also hides every
-    # builder from the job that just made one.
-    - export BUILDX_CONFIG=/srv/ci-cache/buildx; mkdir -p "$BUILDX_CONFIG"
-    - docker buildx inspect apidocs >/dev/null 2>&1 || docker buildx create --name apidocs --bootstrap
-    # `DOCKER_AUTH_CONFIG` is how the runner pulled this job's image, and the
-    # CLI prefers it over anything `docker login` writes — so left set, the push
-    # goes out under the read-only pull token and fails `insufficient_scope`.
-    - unset DOCKER_AUTH_CONFIG
-    - export DOCKER_CONFIG="$CI_PROJECT_DIR/.docker"; mkdir -p "$DOCKER_CONFIG"
-    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
-    - >
-      docker buildx build --builder apidocs --push --provenance=false
-      --file apps/docs/Dockerfile
-      --tag "$DOCS_IMAGE:latest" --tag "$DOCS_IMAGE:$CI_COMMIT_SHA"
-      --secret "id=npm_token,env=CYKA_NPM_TOKEN"
-      --cache-from "type=registry,ref=$DOCS_IMAGE:latest" .
-  after_script:
-    - export BUILDX_CONFIG=/srv/ci-cache/buildx
-    - docker buildx prune --force --max-used-space 6gb --builder apidocs || true
-    - rm -rf "$CI_PROJECT_DIR/.docker"
+    # `build-image` is acyka/ci's, baked into the base image: it builds on the
+    # runner's BuildKit (a job does not get the host's docker), takes the
+    # registry credential in its own process with `DOCKER_AUTH_CONFIG` unset,
+    # hands the build `CYKA_NPM_TOKEN` as the `npm_token` secret, and pushes
+    # `:latest` and `:<sha>` — which is everything this job used to spell out.
+    - build-image docs . apps/docs/Dockerfile 6gb
 
 deploy:
   stage: deploy
