@@ -4,6 +4,20 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<meta name="color-scheme" content="dark light" />
+		<script>
+			// Before the first paint, so a reader who chose light never sees a dark
+			// frame flash past. `system` (or nothing, or storage that throws) follows
+			// the operating system. The toggle in the bar writes the same key.
+			(function () {
+				var said = 'system';
+				try {
+					said = localStorage.getItem('acyka:docs:theme') || 'system';
+				} catch (e) {}
+				var dark = said === 'dark' || (said !== 'light' && !matchMedia('(prefers-color-scheme: light)').matches);
+				document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

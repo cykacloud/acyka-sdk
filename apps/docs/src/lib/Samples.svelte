@@ -1,68 +1,108 @@
 <script lang="ts">
 	/**
-	 * The same call in seven languages, one visible at a time.
+	 * The same call in seven languages, one visible at a time, the switch in the
+	 * block's own bar.
 	 *
-	 * **The choice is remembered.** A reader working in Rust who has to press
-	 * "Rust" on every one of forty-three pages is a reader who stops reading, so
-	 * the tab is written to `localStorage` and every block on the site opens on
-	 * it. Read through a `try` because a browser with site data blocked throws
-	 * rather than answering — and a documentation page must not be the thing
-	 * that breaks.
+	 * The choice is the site's, not the block's (`language.svelte.ts`): picking
+	 * Python here turns every other block, and the next page, to Python.
 	 */
-	import { Tabs } from '@cyka/ui';
 	import Code from '$lib/Code.svelte';
+	import { language, recall, remember } from '$lib/language.svelte';
 
 	let {
-		samples
-	}: { samples: { id: string; label: string; code: string; html?: string }[] } = $props();
-
-	const KEY = 'acyka:docs:language';
-
-	function remembered(): string {
-		try {
-			const said = localStorage.getItem(KEY);
-			if (said && samples.some((s) => s.id === said)) return said;
-		} catch {
-			// site data is blocked, which is a preference rather than a fault
-		}
-		return samples[0]?.id ?? '';
-	}
-
-	// Empty until the browser says otherwise, so the server and the browser agree
-	// about what was rendered — reading storage during render would be a
-	// hydration mismatch on every page. `showing` falls back to the first
-	// sample, so an empty choice draws the same thing the server drew.
-	let chosen = $state('');
+		samples,
+		label
+	}: {
+		samples: { id: string; label: string; code: string; html?: string }[];
+		/** said before the tabs, where a block needs a name as well */
+		label?: string;
+	} = $props();
 
 	$effect(() => {
-		chosen = remembered();
+		recall();
 	});
 
-	$effect(() => {
-		if (!chosen) return;
-		try {
-			localStorage.setItem(KEY, chosen);
-		} catch {
-			// as above
-		}
-	});
-
-	const showing = $derived(samples.find((s) => s.id === chosen) ?? samples[0]);
+	const showing = $derived(samples.find((s) => s.id === language.chosen) ?? samples[0]);
 </script>
 
-<div class="samples">
-	<Tabs items={samples.map((s) => ({ id: s.id, label: s.label }))} bind:value={chosen} scroll />
-	{#if showing}
-		{#key showing.id}
-			<Code code={showing.code} html={showing.html} />
-		{/key}
-	{/if}
-</div>
+{#if showing}
+	<Code code={showing.code} html={showing.html}>
+		{#snippet bar()}
+			<div class="tabs" role="tablist" aria-label={label ?? 'Language'}>
+				{#if label}<span class="name">{label}</span>{/if}
+				{#each samples as sample (sample.id)}
+					<button
+						type="button"
+						role="tab"
+						aria-selected={sample.id === showing.id}
+						onclick={() => remember(sample.id)}
+					>
+						{sample.label}
+					</button>
+				{/each}
+			</div>
+		{/snippet}
+	</Code>
+{/if}
 
 <style>
-	.samples {
+	.tabs {
 		display: flex;
-		flex-direction: column;
-		gap: var(--s-2);
+		align-items: stretch;
+		gap: 2px;
+		min-width: 0;
+		margin-left: calc(-1 * var(--s-2));
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+
+	.tabs::-webkit-scrollbar {
+		display: none;
+	}
+
+	.name {
+		display: inline-flex;
+		align-items: center;
+		padding: 0 var(--s-3) 0 var(--s-2);
+		margin-right: var(--s-1);
+		border-right: 1px solid var(--border);
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--text-2);
+		white-space: nowrap;
+	}
+
+	button {
+		position: relative;
+		flex: none;
+		height: 40px;
+		padding: 0 10px;
+		border: 0;
+		background: none;
+		color: var(--text-muted);
+		font: inherit;
+		font-size: 12.5px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: color var(--t) var(--ease);
+	}
+
+	button:hover {
+		color: var(--text-title);
+	}
+
+	button[aria-selected='true'] {
+		color: var(--text-title);
+	}
+
+	button[aria-selected='true']::after {
+		content: '';
+		position: absolute;
+		left: 10px;
+		right: 10px;
+		bottom: -1px;
+		height: 2px;
+		border-radius: 2px;
+		background: var(--accent);
 	}
 </style>

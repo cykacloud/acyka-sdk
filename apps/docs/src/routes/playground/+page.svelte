@@ -14,10 +14,13 @@
 	 * wrong thing about what a token can do.
 	 */
 	import { page } from '$app/state';
-	import { Badge, Button, Input, Search, TextArea, Tabs } from '@cyka/ui';
+	import { Button, CopyButton, Input, Search, TextArea, toast } from '@cyka/ui';
 	import IconSearch from '@tabler/icons-svelte/icons/search';
 	import IconPlayerPlay from '@tabler/icons-svelte/icons/player-play';
 	import IconAlertTriangle from '@tabler/icons-svelte/icons/alert-triangle';
+	import IconLock from '@tabler/icons-svelte/icons/lock';
+	import IconUserCircle from '@tabler/icons-svelte/icons/user-circle';
+	import IconBook from '@tabler/icons-svelte/icons/book-2';
 	import Code from '$lib/Code.svelte';
 	import { ASKING, send, signed, type Answer } from '$lib/auth.svelte';
 
@@ -48,6 +51,7 @@
 		return all.filter(
 			(op) =>
 				op.id.toLowerCase().includes(asked) ||
+				op.label.toLowerCase().includes(asked) ||
 				op.path.toLowerCase().includes(asked) ||
 				op.summary.toLowerCase().includes(asked)
 		);
@@ -57,7 +61,9 @@
 		chosen = op;
 		answer = null;
 		failed = '';
-		values = {};
+		// every field starts as an empty string: the kit's `Input` has a fallback
+		// value, and binding it to `undefined` is an error in Svelte 5
+		values = Object.fromEntries(op.params.map((p) => [p.name, '']));
 		body = '{\n  \n}';
 	}
 
@@ -121,142 +127,173 @@
 	}
 
 	const shown = $derived(answer ? JSON.stringify(answer.body, null, 2) : '');
+
+	/** the list, grouped by what each operation is about */
+	const grouped = $derived.by(() => {
+		const by = new Map<string, Op[]>();
+		for (const op of showing) {
+			if (!by.has(op.tag)) by.set(op.tag, []);
+			by.get(op.tag)!.push(op);
+		}
+		return [...by.entries()].map(([tag, ops]) => ({ tag, ops }));
+	});
+
+	/** the request as a curl line, for the reader who wants to take it away */
+	const asCurl = $derived(
+		chosen
+			? `curl -X ${chosen.method} '${url}' \\\n  -H "Authorization: Bearer $ACYKA_TOKEN"` +
+					(chosen.body ? ` \\\n  -H 'content-type: application/json' \\\n  -d '${body.replace(/'/g, "'\\''")}'` : '')
+			: ''
+	);
+
+	const tone = (status: number) => (status < 300 ? 'ok' : status < 500 ? 'no' : 'bad');
 </script>
 
 <svelte:head>
 	<title>Playground — acyka api</title>
 	<meta
 		name="description"
-		content="Call the acyka API from your browser, signed in as yourself. Every request is the same cross-site call your own application will make."
+		content="Call the live acyka API from your browser, signed in as yourself."
 	/>
 </svelte:head>
 
 <div class="ground">
-	<header class="prose">
-		<h1>Playground</h1>
-		<p class="lede">
-			The live api, from this browser, with your own token. Every call here is the same cross-site
-			request your own single-page application will make — there is no proxy in between.
-		</p>
-	</header>
+	<header class="intro">
+		<div>
+			<p class="eyebrow">Playground</p>
+			<h1>Call the live api, as you</h1>
+			<p class="lede">
+				Every request here is the cross-site request your own single-page application will make —
+				from this tab, with your token, and no proxy in between.
+			</p>
+		</div>
 
-	<section class="who">
-		{#if signed.in}
-			<p class="in">
-				<Badge>signed in</Badge>
-				<span>granted <code>{signed.scopes.join(' ')}</code></span>
-			</p>
-			<Button size="sm" variant="ghost" onclick={() => signed.out()}>Sign out</Button>
-		{:else}
-			<p class="out">
-				<span>
-					Reads of the catalogue need a token too, so sign in to try anything. You will be asked
-					for <code>{ASKING.join(' ')}</code>, and it lasts an hour.
-				</span>
-			</p>
-			<Button size="sm" onclick={() => signed.start(page.url.pathname + page.url.search)}>
-				Sign in with acyka
-			</Button>
-		{/if}
-	</section>
+		<div class="who" class:in={signed.in}>
+			<span class="avatar"><IconUserCircle size={22} stroke={1.6} /></span>
+			{#if signed.in}
+				<div class="words">
+					<strong>Signed in</strong>
+					<span class="scopes">
+						{#each signed.scopes as scope (scope)}<code>{scope}</code>{/each}
+					</span>
+				</div>
+				<Button size="sm" variant="ghost" onclick={() => signed.out()}>Sign out</Button>
+			{:else}
+				<div class="words">
+					<strong>Not signed in</strong>
+					<span>Every route needs a token. It lasts an hour.</span>
+				</div>
+				<Button size="sm" onclick={() => signed.start(page.url.pathname + page.url.search)}>
+					Sign in with acyka
+				</Button>
+			{/if}
+		</div>
+	</header>
 
 	<div class="split">
 		<aside class="list">
-			<Search bind:value={filter} placeholder="filter" label="filter the operations">
+			<Search bind:value={filter} placeholder="Filter operations" label="Filter the operations">
 				{#snippet icon()}<IconSearch size={16} stroke={1.7} />{/snippet}
 			</Search>
 
-			<ul>
-				{#each showing as op (op.id)}
-					<li>
+			<div class="ops">
+				{#each grouped as group (group.tag)}
+					<p class="tag">{group.tag}</p>
+					{#each group.ops as op (op.id)}
 						<button
 							type="button"
 							class:on={chosen?.id === op.id}
+							aria-pressed={chosen?.id === op.id}
 							onclick={() => pick(op)}
 						>
 							<span class="verb" data-verb={op.method}>{op.method}</span>
-							<code>{op.path.replace('/api/v1', '')}</code>
+							<span class="label">{op.label}</span>
 						</button>
-					</li>
+					{/each}
 				{/each}
-			</ul>
+				{#if grouped.length === 0}
+					<p class="none">Nothing matches “{filter}”.</p>
+				{/if}
+			</div>
 		</aside>
 
 		<div class="work">
 			{#if !chosen}
-				<p class="pick">Pick something on the left.</p>
-			{:else}
-				<h2>
-					<span class="verb" data-verb={chosen.method}>{chosen.method}</span>
-					<code>{chosen.path}</code>
-				</h2>
-				{#if chosen.summary}<p class="says">{chosen.summary}</p>{/if}
-
-				<p class="meta">
-					<a href="/reference/{chosen.slug}">the reference for this one</a>
-					{#if chosen.scope}
-						· needs <code>{chosen.scope}</code>
-						{#if signed.in && !signed.carries(chosen.scope)}
-							<span class="warn">
-								<IconAlertTriangle size={14} stroke={1.8} /> not granted — this will answer 403
-							</span>
-						{/if}
-					{/if}
-				</p>
-
-				{#if chosen.writes}
-					<p class="real">
-						<IconAlertTriangle size={16} stroke={1.8} />
-						<span>
-							This one writes, and it writes for real — there is no sandbox behind this api. It
-							will change your own account.
-						</span>
-					</p>
-				{/if}
-
-				{#if chosen.params.length}
-					<div class="params">
-						{#each chosen.params as param (param.name)}
-							<label>
-								<span class="name">
-									<code>{param.name}</code>
-									{#if param.required}<em>required</em>{/if}
-									<small>{param.where === 'path' ? 'in the address' : 'narrows it'}</small>
-								</span>
-								<Input
-									bind:value={values[param.name]}
-									placeholder={param.kind === 'string' ? 'text' : 'a number'}
-									hint={param.doc}
-								/>
-							</label>
-						{/each}
-					</div>
-				{/if}
-
-				{#if chosen.body}
-					<label class="body">
-						<span class="name">
-							<code>{chosen.body}</code>
-							<small>the request body, as JSON</small>
-						</span>
-						<TextArea bind:value={body} rows={6} />
-					</label>
-				{/if}
-
-				<div class="going">
-					<code class="url">{url}</code>
-					<!-- The kit's `icon` prop is a boolean — "this button is only an
-					     icon" — so the icon goes in the content beside the word. -->
-					<Button disabled={!ready || running || !signed.in} loading={running} onclick={run}>
-						<span class="go"><IconPlayerPlay size={15} stroke={1.9} /> Send</span>
-					</Button>
+				<div class="pick">
+					<IconPlayerPlay size={28} stroke={1.4} />
+					<p><strong>Pick an operation</strong></p>
+					<p>Choose one on the left, fill in what it asks for, and send it.</p>
 				</div>
+			{:else}
+				<div class="card">
+					<div class="title">
+						<h2>{chosen.label}</h2>
+						<a class="ref" href="/reference/{chosen.slug}"><IconBook size={14} stroke={1.8} /> Reference</a>
+					</div>
+					{#if chosen.summary}<p class="says">{chosen.summary}</p>{/if}
 
-				{#if !signed.in}
-					<p class="hint">Sign in first — every route on this api needs a token.</p>
-				{:else if !ready}
-					<p class="hint">Fill in what is required.</p>
-				{/if}
+					<div class="address">
+						<span class="verb" data-verb={chosen.method}>{chosen.method}</span>
+						<code>{url.replace('https://api.acyka.cc', '')}</code>
+					</div>
+
+					<div class="facts">
+						{#if chosen.scope}
+							<span class="fact"><IconLock size={13} stroke={1.8} /> <code>{chosen.scope}</code></span>
+							{#if signed.in && !signed.carries(chosen.scope)}
+								<span class="fact warn">
+									<IconAlertTriangle size={13} stroke={1.8} /> not granted — this will answer 403
+								</span>
+							{/if}
+						{/if}
+					</div>
+
+					{#if chosen.writes}
+						<p class="real">
+							<IconAlertTriangle size={16} stroke={1.8} />
+							<span>This one writes, for real — there is no sandbox. It will change your own account.</span>
+						</p>
+					{/if}
+
+					{#if chosen.params.length}
+						<div class="params">
+							{#each chosen.params as param (param.name)}
+								<label>
+									<span class="name">
+										<code>{param.name}</code>
+										<small>{param.where === 'path' ? 'path' : 'query'}</small>
+										{#if param.required}<em>required</em>{/if}
+									</span>
+									<Input
+										bind:value={values[param.name]}
+										placeholder={param.kind === 'string' ? 'text' : 'a number'}
+										hint={param.doc}
+									/>
+								</label>
+							{/each}
+						</div>
+					{/if}
+
+					{#if chosen.body}
+						<label class="body">
+							<span class="name">
+								<code>{chosen.body}</code>
+								<small>body, as JSON</small>
+							</span>
+							<TextArea bind:value={body} rows={7} />
+						</label>
+					{/if}
+
+					<div class="going">
+						<span class="state">
+							{#if !signed.in}Sign in first.{:else if !ready}Fill in what is required.{:else}Ready.{/if}
+						</span>
+						<CopyButton value={asCurl} onfail={() => toast('could not copy', 'error')} />
+						<Button disabled={!ready || running || !signed.in} loading={running} onclick={run}>
+							<span class="go"><IconPlayerPlay size={15} stroke={1.9} /> Send</span>
+						</Button>
+					</div>
+				</div>
 
 				{#if failed}
 					<p class="failed">{failed}</p>
@@ -264,17 +301,19 @@
 
 				{#if answer}
 					<div class="answer">
-						<p class="line">
-							<Badge>{answer.status}</Badge>
-							<span>{answer.took} ms</span>
-							{#if answer.pace.remaining}
-								<span class="pace">
-									{answer.pace.remaining} of {answer.pace.limit} left · resets in
-									{answer.pace.reset}s
+						<Code code={shown}>
+							{#snippet bar()}
+								<span class="line">
+									<span class="st {tone(answer!.status)}">{answer!.status}</span>
+									<span>{answer!.took} ms</span>
+									{#if answer!.pace.remaining}
+										<span class="pace">
+											{answer!.pace.remaining}/{answer!.pace.limit} left · resets in {answer!.pace.reset}s
+										</span>
+									{/if}
 								</span>
-							{/if}
-						</p>
-						<Code code={shown} />
+							{/snippet}
+						</Code>
 					</div>
 				{/if}
 			{/if}
@@ -284,43 +323,99 @@
 
 <style>
 	.ground {
-		max-width: 72rem;
 		display: flex;
 		flex-direction: column;
+		gap: var(--s-6);
+		width: 100%;
+		max-width: 88rem;
+		margin: 0 auto;
+		padding: var(--s-6) var(--s-4) var(--s-12);
+	}
+
+	.intro {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
 		gap: var(--s-4);
 	}
 
+	.eyebrow {
+		margin: 0 0 var(--s-2);
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--accent-hover);
+	}
+
+	:global(:root[data-theme='light']) .eyebrow {
+		color: var(--accent-text);
+	}
+
+	h1 {
+		margin: 0;
+		font-size: clamp(1.8rem, 3.2vw, 2.3rem);
+		letter-spacing: -0.03em;
+		color: var(--text-title);
+	}
+
 	.lede {
+		max-width: 38rem;
+		margin: var(--s-2) 0 0;
+		line-height: 1.6;
 		color: var(--text-2);
-		font-size: var(--fs-sub);
 	}
 
 	.who {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		flex-wrap: wrap;
 		gap: var(--s-3);
-		padding: var(--s-3);
+		max-width: 100%;
+		padding: var(--s-2) var(--s-2) var(--s-2) var(--s-3);
 		border: 1px solid var(--border);
-		border-radius: var(--r-md);
-		background: var(--surface);
+		border-radius: var(--r-lg);
+		background: color-mix(in oklab, var(--surface) 45%, transparent);
 	}
-	.who p {
-		margin: 0;
+
+	.who.in {
+		border-color: color-mix(in oklab, var(--verb-post) 40%, var(--border));
+	}
+
+	.avatar {
+		display: inline-flex;
+		color: var(--text-muted);
+	}
+
+	.who.in .avatar {
+		color: var(--verb-post);
+	}
+
+	.who .words {
 		display: flex;
-		align-items: center;
-		gap: var(--s-2);
+		flex-direction: column;
+		min-width: 0;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+
+	.who strong {
+		color: var(--text-title);
+		font-size: 14px;
+	}
+
+	.scopes {
+		display: flex;
 		flex-wrap: wrap;
-		font-size: var(--fs-sub);
-		color: var(--text-caption);
+		gap: 4px;
+	}
+
+	.scopes code {
+		font-family: var(--font-mono);
+		font-size: 11px;
 	}
 
 	.split {
 		display: grid;
-		grid-template-columns: 1fr;
 		gap: var(--s-4);
-		align-items: start;
 	}
 
 	.list {
@@ -330,126 +425,196 @@
 		min-width: 0;
 	}
 
-	.list ul {
-		list-style: none;
-		margin: 0;
-		padding: 0;
+	.ops {
 		display: flex;
 		flex-direction: column;
 		gap: 1px;
-		max-height: 22rem;
+		max-height: 40vh;
 		overflow-y: auto;
+		scrollbar-width: thin;
 	}
 
-	.list button {
+	.tag {
+		margin: var(--s-3) 0 var(--s-1);
+		padding: 0 var(--s-2);
+		font-size: 11.5px;
+		font-weight: 650;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: var(--text-title);
+	}
+
+	.ops button {
 		display: flex;
-		align-items: baseline;
-		gap: var(--s-2);
-		width: 100%;
-		padding: 5px var(--s-2);
+		align-items: center;
+		gap: 10px;
+		padding: 6px var(--s-2);
 		border: 0;
-		border-radius: var(--r-control);
-		background: transparent;
+		border-radius: 8px;
+		background: none;
 		color: var(--text-2);
 		font: inherit;
-		font-size: var(--fs-sub);
+		font-size: 14px;
 		text-align: left;
 		cursor: pointer;
 	}
-	.list button:hover {
-		background: var(--surface-2);
-		color: var(--text);
+
+	.ops button:hover {
+		background: var(--hover);
+		color: var(--text-title);
 	}
-	.list button.on {
-		background: var(--accent-faint);
+
+	.ops button.on {
+		background: color-mix(in oklab, var(--accent) 13%, transparent);
 		color: var(--text-title);
 		font-weight: 600;
 	}
-	.list code {
-		font-family: var(--font-mono);
+
+	.ops .verb {
+		font-size: 9.5px;
+	}
+
+	.label {
+		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.verb {
-		flex: none;
-		padding: 1px 6px;
-		border-radius: var(--r-sm);
-		background: var(--surface-3);
-		color: var(--text-2);
-		font-family: var(--font-mono);
-		font-size: 10px;
-		font-weight: 700;
-	}
-	.verb[data-verb='POST'],
-	.verb[data-verb='PUT'] {
-		background: var(--accent-faint);
-		color: var(--accent-hover);
-	}
-	.verb[data-verb='DELETE'] {
-		background: color-mix(in oklab, var(--red) 18%, transparent);
-		color: var(--red);
+	.none {
+		padding: var(--s-2);
+		font-size: 14px;
+		color: var(--text-muted);
 	}
 
 	.work {
 		display: flex;
 		flex-direction: column;
-		gap: var(--s-3);
+		gap: var(--s-4);
 		min-width: 0;
-		padding: var(--s-4);
-		border: 1px solid var(--border);
-		border-radius: var(--r-md);
-		background: var(--surface);
 	}
 
-	.work h2 {
+	.pick {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
-		gap: var(--s-2);
-		margin: 0;
-		font-size: var(--fs-h3);
+		justify-content: center;
+		gap: var(--s-1);
+		min-height: 18rem;
+		padding: var(--s-8);
+		border: 1px dashed var(--border-strong);
+		border-radius: var(--r-lg);
+		color: var(--text-muted);
+		text-align: center;
 	}
-	.work h2 code {
-		font-family: var(--font-mono);
-		font-size: 0.8em;
+
+	.pick p {
+		margin: 0;
+	}
+
+	.pick strong {
 		color: var(--text-title);
 	}
 
-	.says,
-	.meta,
-	.hint,
-	.pick {
-		margin: 0;
-		font-size: var(--fs-sub);
-		color: var(--text-muted);
+	.card {
+		display: flex;
+		flex-direction: column;
+		gap: var(--s-3);
+		padding: var(--s-6);
+		border: 1px solid var(--border);
+		border-radius: var(--r-lg);
+		background: color-mix(in oklab, var(--surface) 35%, transparent);
 	}
 
-	.meta {
+	.title {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--s-3);
+	}
+
+	h2 {
+		margin: 0;
+		font-size: 1.35rem;
+		letter-spacing: -0.02em;
+		color: var(--text-title);
+	}
+
+	.ref {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		font-size: 13px;
+		font-weight: 550;
+	}
+
+	.says {
+		margin: 0;
+		line-height: 1.6;
+		color: var(--text-2);
+	}
+
+	.address {
 		display: flex;
 		align-items: center;
 		gap: var(--s-2);
-		flex-wrap: wrap;
+		padding: 8px 12px 8px 8px;
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		background: var(--code-bg);
+		min-width: 0;
 	}
 
-	.warn {
+	.address code {
+		font-family: var(--font-mono);
+		font-size: 13.5px;
+		color: var(--text-title);
+		overflow-wrap: anywhere;
+	}
+
+	.facts {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--s-2) var(--s-4);
+	}
+
+	.facts:empty {
+		display: none;
+	}
+
+	.fact {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
-		color: var(--gold);
+		gap: 5px;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+
+	.fact code {
+		font-family: var(--font-mono);
+		font-size: 12.5px;
+	}
+
+	.fact.warn {
+		color: var(--verb-put);
 	}
 
 	.real {
 		display: flex;
-		align-items: flex-start;
 		gap: var(--s-2);
 		margin: 0;
-		padding: var(--s-2) var(--s-3);
-		border: 1px solid color-mix(in oklab, var(--gold) 35%, var(--border));
-		border-radius: var(--r-control);
-		background: color-mix(in oklab, var(--gold) 8%, transparent);
-		color: var(--text-caption);
-		font-size: var(--fs-sub);
+		padding: var(--s-3);
+		border: 1px solid color-mix(in oklab, var(--verb-delete) 35%, var(--border));
+		border-radius: var(--r-md);
+		background: color-mix(in oklab, var(--verb-delete) 8%, transparent);
+		color: var(--text);
+		font-size: 14px;
+	}
+
+	.real :global(svg) {
+		flex: none;
+		color: var(--verb-delete);
+		margin-top: 2px;
 	}
 
 	.params {
@@ -460,48 +625,47 @@
 	label {
 		display: flex;
 		flex-direction: column;
-		gap: var(--s-1);
+		gap: 6px;
+		min-width: 0;
 	}
 
 	.name {
 		display: flex;
 		align-items: baseline;
 		gap: var(--s-2);
-		flex-wrap: wrap;
-		font-size: var(--fs-sub);
 	}
+
 	.name code {
 		font-family: var(--font-mono);
+		font-size: 13px;
+		font-weight: 650;
 		color: var(--text-title);
-		font-weight: 600;
 	}
+
+	.name small {
+		font-size: 11.5px;
+		color: var(--text-muted);
+	}
+
 	.name em {
 		font-style: normal;
-		font-size: var(--fs-tiny);
-		color: var(--accent-hover);
-	}
-	.name small {
-		color: var(--text-muted);
-		font-size: var(--fs-tiny);
+		font-size: 11.5px;
+		font-weight: 600;
+		color: var(--verb-put);
 	}
 
 	.going {
 		display: flex;
 		align-items: center;
-		gap: var(--s-3);
-		flex-wrap: wrap;
-		padding-top: var(--s-2);
+		gap: var(--s-2);
+		padding-top: var(--s-3);
 		border-top: 1px solid var(--border);
 	}
 
-	.url {
+	.state {
 		flex: 1;
-		min-width: 0;
-		font-family: var(--font-mono);
-		font-size: var(--fs-tiny);
+		font-size: 13px;
 		color: var(--text-muted);
-		overflow-x: auto;
-		white-space: nowrap;
 	}
 
 	.go {
@@ -512,38 +676,70 @@
 
 	.failed {
 		margin: 0;
-		color: var(--red);
-		font-size: var(--fs-sub);
+		padding: var(--s-3) var(--s-4);
+		border: 1px solid color-mix(in oklab, var(--verb-delete) 35%, var(--border));
+		border-radius: var(--r-md);
+		color: var(--verb-delete);
+		font-size: 14px;
 	}
 
-	.answer {
-		display: flex;
-		flex-direction: column;
-		gap: var(--s-2);
-		min-width: 0;
+	.answer :global(pre) {
+		max-height: 60vh;
 	}
 
 	.line {
-		display: flex;
+		display: inline-flex;
 		align-items: center;
-		gap: var(--s-2);
-		flex-wrap: wrap;
-		margin: 0;
-		font-size: var(--fs-sub);
+		gap: var(--s-3);
+		font-size: 12.5px;
 		color: var(--text-muted);
 	}
 
-	.pace {
+	.st {
+		padding: 1px 7px;
+		border-radius: 6px;
 		font-family: var(--font-mono);
-		font-size: var(--fs-tiny);
+		font-size: 12px;
+		font-weight: 700;
+	}
+
+	.st.ok {
+		color: var(--verb-post);
+		background: color-mix(in oklab, var(--verb-post) 14%, transparent);
+	}
+
+	.st.no {
+		color: var(--verb-put);
+		background: color-mix(in oklab, var(--verb-put) 14%, transparent);
+	}
+
+	.st.bad {
+		color: var(--verb-delete);
+		background: color-mix(in oklab, var(--verb-delete) 14%, transparent);
 	}
 
 	@media (min-width: 900px) {
-		.split {
-			grid-template-columns: 20rem minmax(0, 1fr);
+		.ground {
+			padding: var(--s-8) var(--s-6) var(--s-12);
 		}
-		.list ul {
-			max-height: calc(100dvh - 20rem);
+
+		.split {
+			grid-template-columns: 300px minmax(0, 1fr);
+			gap: var(--s-6);
+			align-items: start;
+		}
+
+		.list {
+			position: sticky;
+			top: calc(var(--top-h) + var(--s-4));
+		}
+
+		.ops {
+			max-height: calc(100dvh - var(--top-h) - 7rem);
+		}
+
+		.params {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}
 </style>

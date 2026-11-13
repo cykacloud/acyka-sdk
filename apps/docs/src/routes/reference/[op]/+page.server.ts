@@ -1,5 +1,8 @@
 import { error } from '@sveltejs/kit';
-import { bySlug, contract } from '$lib/server/contract';
+import { bySlug, contract, groups } from '$lib/server/contract';
+import { exampleJson } from '$lib/server/example';
+import { spoken } from '$lib/server/nav';
+import { slug } from '$lib/slug';
 import { coloured } from '$lib/server/highlight';
 import { samples } from '$lib/server/samples';
 import { links } from '$lib/type';
@@ -40,8 +43,20 @@ export async function load({ params }) {
 
 	const written = samples(op);
 
+	// the operations either side of this one in its group, for the doors at the bottom
+	const all = groups().flatMap((g) => g.ops);
+	const at = all.findIndex((one) => one.id === op.id);
+	const door = (one: (typeof all)[number] | undefined) =>
+		one && { href: `/reference/${slug(one.id)}`, label: spoken(one.id), verb: one.method };
+
+	const answer = op.ok.ty ? exampleJson(api, op.ok.ty) : undefined;
+
 	return {
 		op,
+		title: spoken(op.id),
+		prev: door(all[at - 1]),
+		next: door(all[at + 1]),
+		answer: answer && { code: answer, html: await coloured(answer, 'json') },
 		shapes: [...found.values()],
 		samples: await Promise.all(
 			written.map(async (sample) => ({

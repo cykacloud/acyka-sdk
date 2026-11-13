@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Code from '$lib/Code.svelte';
+	import Samples from '$lib/Samples.svelte';
 	import Guide from '$lib/Guide.svelte';
 
 	let { data } = $props();
@@ -77,7 +78,7 @@
 		<a class="anchor" href="#install" aria-label="a link to this section">#</a>
 	</h2>
 
-	<Code code={data.blocks.install.code} html={data.blocks.install.html} />
+	<Samples samples={data.installs} label="Install" />
 
 	<p>
 		Six of them — TypeScript, Python, Rust, Kotlin, C# and C++ — and they are the same library six
@@ -91,7 +92,7 @@
 		<a class="anchor" href="#first-call" aria-label="a link to this section">#</a>
 	</h2>
 
-	<Code code={data.blocks.first.code} html={data.blocks.first.html} label="index.ts" />
+	<Samples samples={data.first} label="First call" />
 
 	<p>
 		Only <code>catalog:read</code> and <code>people:read</code> can be held this way. Everything

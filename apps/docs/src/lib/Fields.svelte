@@ -1,6 +1,11 @@
 <script lang="ts">
 	/**
-	 * A shape's fields, as one language writes them.
+	 * A shape's fields, as one language writes them: a list rather than a table.
+	 *
+	 * A three-column table is a table whose third column — the one with the
+	 * words in it — gets squeezed to a ribbon on a phone. Here every field is a
+	 * line with its name, its type and whether it may be missing, and what it is
+	 * underneath, at whatever width there is.
 	 *
 	 * The wire's own name is always shown, whatever the language, because that is
 	 * what a `curl` answer holds and what the reader will be looking at in their
@@ -9,122 +14,121 @@
 	 */
 	import type { Field } from '$tools/spec';
 	import { links, member, optional, written, type Language } from '$lib/type';
+	import { inline } from '$lib/inline';
 
-	let { fields, language }: { fields: Field[]; language: Language } = $props();
+	let {
+		fields,
+		language,
+		/** for parameters: "required" is the news, rather than "may be absent" */
+		asking = false
+	}: { fields: Field[]; language: Language; asking?: boolean } = $props();
 
 	const renames = $derived(language === 'kotlin' || language === 'csharp');
 </script>
 
-<table>
-	<thead>
-		<tr>
-			<th>field</th>
-			<th>type</th>
-			<th>what it is</th>
-		</tr>
-	</thead>
-	<tbody>
-		{#each fields as field (field.name)}
-			<!-- `{@const}` has to be the immediate child of a block, which is what
-			     this `{#each}` is — inside the `<td>` it was a compile error. -->
-			{@const shape = links(field.ty)}
-			{@const spelled = written(field.ty, language)}
-			{@const shown = field.optional ? optional(spelled, language) : spelled}
-			<tr>
-				<td>
-					<code class="name">{field.name}</code>
-					{#if renames}
-						<code class="renamed">{member(field.name, language)}</code>
-					{/if}
-					{#if field.optional}<span class="maybe">may be absent</span>{/if}
-				</td>
-				<td>
-					<code class="type">
-						{#if shape}
-							<a href="#shape-{shape}">{shown}</a>
-						{:else}
-							{shown}
-						{/if}
-					</code>
-				</td>
-				<td class="says">{field.doc ?? ''}</td>
-			</tr>
-		{/each}
-	</tbody>
-</table>
+<ul class="fields">
+	{#each fields as field (field.name)}
+		{@const shape = links(field.ty)}
+		{@const spelled = written(field.ty, language)}
+		{@const shown = field.optional && !asking ? optional(spelled, language) : spelled}
+		<li>
+			<div class="line">
+				<code class="name">{field.name}</code>
+				{#if renames && member(field.name, language) !== field.name}
+					<code class="renamed">{member(field.name, language)}</code>
+				{/if}
+				<code class="type">
+					{#if shape}<a href="#shape-{shape}">{shown}</a>{:else}{shown}{/if}
+				</code>
+				{#if asking}
+					<span class="flag" class:must={!field.optional}>{field.optional ? 'optional' : 'required'}</span>
+				{:else if !asking && field.optional}
+					<span class="flag">may be absent</span>
+				{/if}
+			</div>
+			{#if field.doc}<p class="says">{@html inline(field.doc)}</p>{/if}
+		</li>
+	{/each}
+</ul>
 
 <style>
-	table {
-		width: 100%;
-		border-collapse: collapse;
-		font-size: var(--fs-sub);
+	.fields {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		border-top: 1px solid var(--border);
 	}
 
-	th {
-		text-align: left;
-		padding: var(--s-1) var(--s-3);
+	li {
+		margin: 0 !important;
+		padding: var(--s-3) 0;
 		border-bottom: 1px solid var(--border);
-		color: var(--text-2);
-		font-size: var(--fs-tiny);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
 	}
 
-	td {
-		padding: var(--s-2) var(--s-3);
-		border-bottom: 1px solid var(--border);
-		vertical-align: top;
-		color: var(--text-caption);
-	}
-
-	tr:last-child td {
-		border-bottom: none;
+	.line {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 4px var(--s-2);
 	}
 
 	code {
 		font-family: var(--font-mono);
-		font-size: 0.9em;
+		font-size: 13px;
+		padding: 0 !important;
+		border: 0 !important;
+		background: none !important;
 	}
 
 	.name {
-		color: var(--text-title);
-		font-weight: 600;
+		font-weight: 650;
+		color: var(--text-title) !important;
 	}
 
-	/* The name the language gives it, quieter than the wire's own. */
 	.renamed {
-		margin-left: var(--s-2);
-		color: var(--text-muted);
+		color: var(--text-muted) !important;
+	}
+
+	.renamed::before {
+		content: '→ ';
 	}
 
 	.type {
-		color: var(--accent-hover);
-		white-space: nowrap;
+		color: var(--text-muted) !important;
+		font-size: 12.5px;
 	}
 
-	.maybe {
-		display: block;
-		margin-top: 2px;
-		font-size: var(--fs-tiny);
+	.type a {
+		color: var(--accent-hover);
+	}
+
+	:global(:root[data-theme='light']) .type a {
+		color: var(--accent-text);
+	}
+
+	.flag {
+		font-size: 11.5px;
+		font-weight: 550;
 		color: var(--text-muted);
 	}
 
-	.says {
-		max-width: 34rem;
-		line-height: 1.55;
+	.flag.must {
+		color: var(--verb-put);
 	}
 
-	/* A table wider than the column scrolls inside itself rather than taking the
-	   page sideways with it. */
-	@media (max-width: 720px) {
-		table {
-			display: block;
-			overflow-x: auto;
-			white-space: nowrap;
-		}
-		.says {
-			white-space: normal;
-		}
+	.says :global(code) {
+		font-size: 12.5px;
+		padding: 0.05em 0.35em !important;
+		border: 1px solid var(--border) !important;
+		border-radius: 5px;
+		background: var(--surface) !important;
+		color: var(--text-title);
+	}
+
+	.says {
+		margin: 6px 0 0 !important;
+		font-size: 14px;
+		line-height: 1.6;
+		color: var(--text-caption);
 	}
 </style>

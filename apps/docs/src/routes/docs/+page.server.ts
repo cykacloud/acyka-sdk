@@ -1,10 +1,13 @@
 import { blocks, sh, ts } from '$lib/server/guide';
 import { contract } from '$lib/server/contract';
+import { first, installs } from '$lib/server/first';
 
 export async function load() {
 	const api = contract();
 	return {
 		counts: { operations: api.ops.length, models: api.models.length },
+		installs: await installs(),
+		first: await first(),
 		blocks: await blocks({
 			install: sh(`bun add @acyka/api      # or npm / pnpm / yarn
 pip install acyka
