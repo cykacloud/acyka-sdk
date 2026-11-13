@@ -24,16 +24,18 @@ const LANGS = [
 	'bash',
 	'json',
 	'toml',
-	'xml'
+	'xml',
+	'cmake'
 ] as const;
 
 let building: Promise<Highlighter> | undefined;
 
 function highlighter(): Promise<Highlighter> {
 	building ??= createHighlighter({
-		// One theme, and a dark one, because the site has one. A light variant
-		// would be two stylesheets for a page nobody reads in daylight.
-		themes: ['vitesse-dark'],
+		// Two themes in one pass: every token carries both colours as custom
+		// properties and `app.css` picks one by `data-theme`, so switching the
+		// theme recolours code without asking the server for anything.
+		themes: ['vitesse-dark', 'vitesse-light'],
 		langs: [...LANGS]
 	});
 	return building;
@@ -45,9 +47,7 @@ export async function coloured(code: string, lang: string): Promise<string> {
 	const known = (LANGS as readonly string[]).includes(lang) ? lang : 'bash';
 	return shiki.codeToHtml(code.trimEnd(), {
 		lang: known,
-		theme: 'vitesse-dark',
-		// The background comes from the site's own tokens, so the block sits in
-		// the page rather than on it.
-		colorReplacements: { '#121212': 'transparent' }
+		themes: { dark: 'vitesse-dark', light: 'vitesse-light' },
+		defaultColor: false
 	});
 }

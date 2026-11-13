@@ -1,5 +1,6 @@
 import { contract } from '$lib/server/contract';
 import { slug } from '$lib/slug';
+import { spoken } from '$lib/server/nav';
 
 /**
  * Every operation, thinned to what the playground needs.
@@ -12,6 +13,7 @@ export function load() {
 	return {
 		ops: contract().ops.map((op) => ({
 			id: op.id,
+			label: spoken(op.id),
 			slug: slug(op.id),
 			tag: op.tag,
 			method: op.method,

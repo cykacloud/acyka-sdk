@@ -1,13 +1,13 @@
 /**
- * The rail, worked out once per request rather than once per reader.
+ * The rail and the search index, worked out once per request rather than once
+ * per reader.
  *
- * It is derived from `openapi.json`, and deriving it in the layout put the
+ * Both are derived from `openapi.json`, and deriving them in the layout put the
  * whole 160 KB document and the flattener that reads it into the client bundle
- * — every page, every visit, to draw a list of links. Handed over as data it is
- * a few kilobytes of `{ href, label, hint }` in the payload the page already
- * ships, and hydration has it without asking for anything.
+ * — every page, every visit, to draw a list of links. Handed over as data they
+ * are a few kilobytes in the payload the page already ships.
  */
 
-import { sidebar } from '$lib/server/nav';
+import { index, sidebar } from '$lib/server/nav';
 
-export const load = () => ({ rail: sidebar() });
+export const load = () => ({ rail: sidebar(), found: index() });

@@ -4,14 +4,34 @@
  * Not a documentation theme with our colours poured over it: a reader arriving
  * from acyka.cc should recognise where they are, and the tokens, the motion and
  * the components are the thing that makes that true rather than a matching
- * accent colour.
+ * accent colour. What is here is what documentation needs and an app does not:
+ * long prose, code in two themes, tables, callouts and anchors.
  */
 @import '@cyka/ui/fonts.css';
 @import '@cyka/ui/tokens.css';
 @import '@cyka/ui/motion.css';
 
 :root {
-	color-scheme: dark;
+	/* the frame's own measurements, shared by the layout and the pages */
+	--top-h: 60px;
+	--rail-w: 284px;
+	--toc-w: 224px;
+	/* the verbs, coloured by what they do to the world */
+	--verb-get: oklch(0.72 0.13 230);
+	--verb-post: oklch(0.74 0.15 150);
+	--verb-put: oklch(0.78 0.14 75);
+	--verb-patch: oklch(0.78 0.14 75);
+	--verb-delete: oklch(0.68 0.19 25);
+	--code-bg: color-mix(in oklab, var(--surface) 70%, var(--bg-solid));
+}
+
+:root[data-theme='light'] {
+	--verb-get: oklch(0.5 0.14 240);
+	--verb-post: oklch(0.5 0.14 150);
+	--verb-put: oklch(0.55 0.14 65);
+	--verb-patch: oklch(0.55 0.14 65);
+	--verb-delete: oklch(0.52 0.2 25);
+	--code-bg: #fbfbfd;
 }
 
 * {
@@ -22,11 +42,9 @@
  * One ground, and the flat one.
  *
  * `--bg` is a purple radial the catalogue wears behind posters. Behind a column
- * of prose it is a wash with nothing in it, and it tints every neutral surface
- * sitting on top — so this site paints `--bg-solid` and paints it on `html` as
- * well as `body`. `html` matters on its own: it is what a browser shows past
- * the end of the page when somebody overscrolls, and a transparent one is a
- * white flash at the bottom of a dark site.
+ * of prose it is a wash with nothing in it, so this site paints `--bg-solid` —
+ * on `html` as well, which is what a browser shows past the end of the page
+ * when somebody overscrolls.
  */
 html,
 body {
@@ -37,6 +55,21 @@ body {
 	font-family: var(--font-text);
 	font-size: var(--fs-body);
 	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+html {
+	scroll-padding-top: calc(var(--top-h) + var(--s-4));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	html {
+		scroll-behavior: smooth;
+	}
+}
+
+::selection {
+	background: color-mix(in oklab, var(--accent) 35%, transparent);
 }
 
 a {
@@ -46,37 +79,130 @@ a {
 
 a:hover {
 	text-decoration: underline;
+	text-underline-offset: 3px;
 }
 
-/* --- prose, for the guides ------------------------------------------------ */
+:root[data-theme='light'] a {
+	color: var(--accent-text);
+}
+
+kbd {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.6em;
+	height: 1.6em;
+	padding: 0 0.4em;
+	border: 1px solid var(--border-strong);
+	border-bottom-width: 2px;
+	border-radius: 5px;
+	background: var(--surface);
+	color: var(--text-2);
+	font-family: var(--font-text);
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1;
+}
+
+/* --- code, in either theme ------------------------------------------------- */
+
+/*
+ * Shiki writes both colours on every token as custom properties and no colour
+ * of its own (`defaultColor: false`); which one shows is the page's theme.
+ */
+.shiki,
+.shiki span {
+	color: var(--shiki-dark);
+	font-style: var(--shiki-dark-font-style);
+	font-weight: var(--shiki-dark-font-weight);
+}
+
+:root[data-theme='light'] .shiki,
+:root[data-theme='light'] .shiki span {
+	color: var(--shiki-light);
+	font-style: var(--shiki-light-font-style);
+	font-weight: var(--shiki-light-font-weight);
+}
+
+.shiki {
+	background: transparent !important;
+}
+
+/* --- a verb, wherever an operation is named -------------------------------- */
+
+.verb {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	min-width: 3.4em;
+	padding: 1px 6px;
+	border-radius: 5px;
+	font-family: var(--font-mono);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	line-height: 1.6;
+	color: var(--verb, var(--text-2));
+	background: color-mix(in oklab, var(--verb, var(--text-2)) 14%, transparent);
+}
+
+.verb[data-verb='GET'] {
+	--verb: var(--verb-get);
+}
+.verb[data-verb='POST'] {
+	--verb: var(--verb-post);
+}
+.verb[data-verb='PUT'] {
+	--verb: var(--verb-put);
+}
+.verb[data-verb='PATCH'] {
+	--verb: var(--verb-patch);
+}
+.verb[data-verb='DELETE'] {
+	--verb: var(--verb-delete);
+}
+
+/* --- prose, for the guides and the reference -------------------------------- */
 
 .prose {
-	max-width: 42rem;
-	line-height: 1.65;
+	max-width: 46rem;
+	line-height: 1.7;
 }
 
 .prose > * + * {
-	margin-top: var(--s-3);
+	margin-top: var(--s-4);
 }
 
 .prose h1 {
-	font-size: var(--fs-h1);
-	letter-spacing: -0.6px;
-	line-height: 1.15;
-	margin-bottom: var(--s-2);
+	margin: 0;
+	font-family: var(--font-display, var(--font-text));
+	font-size: clamp(1.9rem, 3.4vw, 2.5rem);
+	letter-spacing: -0.03em;
+	line-height: 1.12;
+	color: var(--text-title);
 }
 
 .prose h2 {
-	font-size: var(--fs-h2);
-	letter-spacing: -0.4px;
-	margin-top: var(--s-8);
-	padding-top: var(--s-3);
-	border-top: 1px solid var(--border);
+	margin-top: var(--s-12);
+	margin-bottom: 0;
+	font-size: 1.45rem;
+	letter-spacing: -0.02em;
+	line-height: 1.25;
+	color: var(--text-title);
 }
 
 .prose h3 {
-	font-size: var(--fs-h3);
-	margin-top: var(--s-6);
+	margin-top: var(--s-8);
+	margin-bottom: 0;
+	font-size: 1.1rem;
+	letter-spacing: -0.01em;
+	color: var(--text-title);
+}
+
+.prose h2 + *,
+.prose h3 + * {
+	margin-top: var(--s-3);
 }
 
 .prose p,
@@ -95,34 +221,69 @@ a:hover {
 }
 
 .prose li + li {
-	margin-top: var(--s-1);
+	margin-top: var(--s-2);
 }
 
-.prose code {
+.prose li::marker {
+	color: var(--text-muted);
+}
+
+.prose :not(pre) > code {
 	font-family: var(--font-mono);
-	font-size: 0.9em;
-	padding: 0.1em 0.35em;
-	border-radius: var(--r-sm);
-	background: var(--surface-2);
+	font-size: 0.86em;
+	padding: 0.12em 0.4em;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--surface);
 	color: var(--text-title);
+	overflow-wrap: anywhere;
 }
 
 .prose pre code {
 	padding: 0;
 	background: none;
+	border: 0;
 }
 
 .prose blockquote {
-	margin: 0;
-	padding-left: var(--s-4);
-	border-left: 2px solid var(--accent-soft);
-	color: var(--text-muted);
+	margin-left: 0;
+	margin-right: 0;
+	padding: var(--s-3) var(--s-4);
+	border: 1px solid var(--border);
+	border-left: 3px solid var(--accent);
+	border-radius: var(--r-md);
+	background: color-mix(in oklab, var(--accent) 6%, transparent);
+	color: var(--text-caption);
 }
 
+.prose blockquote > :first-child {
+	margin-top: 0;
+}
+
+.prose blockquote > :last-child {
+	margin-bottom: 0;
+}
+
+.prose hr {
+	border: 0;
+	border-top: 1px solid var(--border);
+	margin: var(--s-8) 0;
+}
+
+/*
+ * A table is a card: rounded, ruled inside, and scrolled sideways on its own
+ * when a phone is narrower than it — never the page.
+ */
 .prose table {
+	display: block;
 	width: 100%;
-	border-collapse: collapse;
+	overflow-x: auto;
+	border-collapse: separate;
+	border-spacing: 0;
+	border: 1px solid var(--border);
+	border-radius: var(--r-md);
 	font-size: var(--fs-sub);
+	line-height: 1.55;
 }
 
 .prose th,
@@ -133,25 +294,59 @@ a:hover {
 	vertical-align: top;
 }
 
+.prose tr:last-child td {
+	border-bottom: 0;
+}
+
 .prose th {
+	background: var(--surface);
 	color: var(--text-2);
 	font-weight: 600;
 	font-size: var(--fs-tiny);
 	text-transform: uppercase;
 	letter-spacing: 0.06em;
+	white-space: nowrap;
 }
 
-/* An anchor a heading can be linked by, without a link cluttering the heading
-   until somebody is looking for one. */
+/* An anchor a heading can be linked by, out of the way until somebody looks. */
 .prose :is(h2, h3) > a.anchor {
 	opacity: 0;
 	margin-left: var(--s-2);
 	color: var(--text-muted);
 	font-weight: 400;
-	transition: opacity var(--t) var(--ease-out);
+	text-decoration: none;
+	transition: opacity var(--t) var(--ease);
 }
 
 .prose :is(h2, h3):hover > a.anchor,
 .prose :is(h2, h3) > a.anchor:focus-visible {
 	opacity: 1;
+}
+
+/* --- callouts ---------------------------------------------------------------- */
+
+.note,
+.warn {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s-2);
+	padding: var(--s-3) var(--s-4);
+	border: 1px solid var(--border);
+	border-radius: var(--r-md);
+	background: var(--surface);
+}
+
+.note {
+	border-color: color-mix(in oklab, var(--verb-get) 35%, var(--border));
+	background: color-mix(in oklab, var(--verb-get) 7%, transparent);
+}
+
+.warn {
+	border-color: color-mix(in oklab, var(--verb-put) 40%, var(--border));
+	background: color-mix(in oklab, var(--verb-put) 8%, transparent);
+}
+
+.note > *,
+.warn > * {
+	margin: 0;
 }
