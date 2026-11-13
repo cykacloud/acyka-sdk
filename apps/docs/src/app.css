@@ -350,3 +350,29 @@ kbd {
 .warn > * {
 	margin: 0;
 }
+
+/* --- motion ----------------------------------------------------------------- */
+
+/*
+ * The page change is the kit's (motion.css: `page-out`, then `page-in`); the
+ * bar holds still on top of it, the way the rail does.
+ */
+::view-transition-group(topbar),
+::view-transition-old(topbar),
+::view-transition-new(topbar) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+/* the same stagger, wherever a page lists cards: each a beat after the last */
+.stagger > * {
+	animation: rise 460ms var(--ease-out) backwards;
+	animation-delay: calc(var(--i, 0) * 45ms + var(--d, 0ms));
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.stagger > *,
+	.rise {
+		animation: none;
+	}
+}

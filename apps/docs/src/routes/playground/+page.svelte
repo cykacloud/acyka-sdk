@@ -158,7 +158,7 @@
 </svelte:head>
 
 <div class="ground">
-	<header class="intro">
+	<header class="intro rise">
 		<div>
 			<p class="eyebrow">Playground</p>
 			<h1>Call the live api, as you</h1>
@@ -225,7 +225,7 @@
 					<p>Choose one on the left, fill in what it asks for, and send it.</p>
 				</div>
 			{:else}
-				<div class="card">
+				<div class="card rise">
 					<div class="title">
 						<h2>{chosen.label}</h2>
 						<a class="ref" href="/reference/{chosen.slug}"><IconBook size={14} stroke={1.8} /> Reference</a>
@@ -300,7 +300,7 @@
 				{/if}
 
 				{#if answer}
-					<div class="answer">
+					<div class="answer rise">
 						<Code code={shown}>
 							{#snippet bar()}
 								<span class="line">

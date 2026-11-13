@@ -52,7 +52,7 @@
 </svelte:head>
 
 <div class="op">
-	<header class="head">
+	<header class="head rise">
 		<p class="eyebrow">{op.tag}</p>
 		<h1>{data.title}</h1>
 		<div class="where">
@@ -189,7 +189,7 @@
 			</p>
 		</div>
 
-		<aside class="calls">
+		<aside class="calls rise" style="--d: 90ms">
 			<div class="stick">
 				<Samples samples={data.samples} label="Request" />
 

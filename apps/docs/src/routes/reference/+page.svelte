@@ -17,7 +17,7 @@
 </svelte:head>
 
 <div class="index">
-	<header class="prose">
+	<header class="prose rise">
 		<p class="eyebrow">API reference</p>
 		<h1>Every operation, by what it is about</h1>
 		<p class="lede">
@@ -31,9 +31,9 @@
 		</p>
 	</header>
 
-	<div class="groups">
-		{#each data.groups as group (group.tag)}
-			<section class="group" id={group.tag}>
+	<div class="groups stagger" style="--d: 80ms">
+		{#each data.groups as group, i (group.tag)}
+			<section class="group" id={group.tag} style="--i: {i}">
 				<div class="title">
 					<h2>{group.tag}</h2>
 					<span class="count">{group.ops.length}</span>
