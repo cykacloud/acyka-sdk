@@ -451,10 +451,13 @@ public sealed class PeopleApi
         return _core.CallAsync<Page<Person>>(HttpMethod.Get, $"/api/v1/users", query, null, cancellationToken);
     }
 
-    /// <remarks><c>GET /api/v1/users/{nick}/collections</c>, needs <c>people:read</c></remarks>
-    public Task<Page<Collection>> UserCollectionsAsync(string nick, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Somebody's public folders, behind the audience they chose for folders.
+    /// </summary>
+    /// <remarks><c>GET /api/v1/users/{nick}/folders</c>, needs <c>people:read</c></remarks>
+    public Task<Page<Folder>> UserFoldersAsync(string nick, CancellationToken cancellationToken = default)
     {
-        return _core.CallAsync<Page<Collection>>(HttpMethod.Get, $"/api/v1/users/{Core.Escape(nick.ToString()!)}/collections", null, null, cancellationToken);
+        return _core.CallAsync<Page<Folder>>(HttpMethod.Get, $"/api/v1/users/{Core.Escape(nick.ToString()!)}/folders", null, null, cancellationToken);
     }
 
     /// <remarks><c>GET /api/v1/users/{nick}/followers</c>, needs <c>people:read</c></remarks>
@@ -531,47 +534,6 @@ public sealed class PeopleApi
         }
     }
 
-    /// <summary>
-    /// What somebody is watching, if their list is anybody's business.
-    /// </summary>
-    /// <remarks><c>GET /api/v1/users/{nick}/lists</c>, needs <c>people:read</c></remarks>
-    public Task<Page<ListEntry>> UserListsAsync(string nick, string? status = null, long? limit = null, long? offset = null, CancellationToken cancellationToken = default)
-    {
-        var query = new (string, object?)[]
-        {
-            ("status", status),
-            ("limit", limit),
-            ("offset", offset),
-        };
-        return _core.CallAsync<Page<ListEntry>>(HttpMethod.Get, $"/api/v1/users/{Core.Escape(nick.ToString()!)}/lists", query, null, cancellationToken);
-    }
-
-    /// <summary>
-    /// Every row of <see cref="UserListsAsync"/>, a page at a time.
-    ///
-    /// Stops when a page comes back shorter than it asked for rather than
-    /// when <c>Total</c> is reached: the list can grow while it is being read,
-    /// and counting against a number from the first page walks off the end.
-    /// </summary>
-    public async IAsyncEnumerable<ListEntry> UserListsAllAsync(string nick, string? status = null, long? limit = null, long? offset = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var window = limit ?? 100;
-        var at = offset ?? 0;
-        while (true)
-        {
-            var page = await UserListsAsync(limit: window, offset: at, nick: nick, status: status, cancellationToken: cancellationToken).ConfigureAwait(false);
-            foreach (var row in page.Items)
-            {
-                yield return row;
-            }
-            if (page.Items.Count < window)
-            {
-                yield break;
-            }
-            at += page.Items.Count;
-        }
-    }
-
     /// <remarks><c>GET /api/v1/users/{nick}/stats</c>, needs <c>people:read</c></remarks>
     public Task<Stats> UserStatsAsync(string nick, CancellationToken cancellationToken = default)
     {
@@ -580,7 +542,7 @@ public sealed class PeopleApi
 }
 
 /// <summary>
-/// somebody's own list and shelves
+/// somebody's own folders and how far through each title they are
 /// </summary>
 public sealed class LibraryApi
 {
@@ -588,116 +550,80 @@ public sealed class LibraryApi
 
     internal LibraryApi(Core core) => _core = core;
 
-    /// <remarks><c>PUT /api/v1/collections/{code}/items/{shikimori_id}</c>, needs <c>lists:write</c></remarks>
-    public Task<CollectionItem> AddCollectionItemAsync(string code, int shikimoriId, EntryBody body, CancellationToken cancellationToken = default)
+    /// <remarks><c>PUT /api/v1/folders/{code}/items/{shikimori_id}</c>, needs <c>lists:write</c></remarks>
+    public Task AddFolderItemAsync(string code, int shikimoriId, ItemBody body, CancellationToken cancellationToken = default)
     {
-        return _core.CallAsync<CollectionItem>(HttpMethod.Put, $"/api/v1/collections/{Core.Escape(code.ToString()!)}/items/{Core.Escape(shikimoriId.ToString()!)}", null, body, cancellationToken);
+        return _core.NothingAsync(HttpMethod.Put, $"/api/v1/folders/{Core.Escape(code.ToString()!)}/items/{Core.Escape(shikimoriId.ToString()!)}", null, body, cancellationToken);
     }
 
-    /// <remarks><c>GET /api/v1/collections/{code}/items</c>, needs <c>lists:read</c></remarks>
-    public Task<Page<CollectionItem>> CollectionItemsAsync(string code, CancellationToken cancellationToken = default)
+    /// <remarks><c>POST /api/v1/folders</c>, needs <c>lists:write</c></remarks>
+    public Task<Folder> CreateFolderAsync(FolderBody body, CancellationToken cancellationToken = default)
     {
-        return _core.CallAsync<Page<CollectionItem>>(HttpMethod.Get, $"/api/v1/collections/{Core.Escape(code.ToString()!)}/items", null, null, cancellationToken);
+        return _core.CallAsync<Folder>(HttpMethod.Post, $"/api/v1/folders", null, body, cancellationToken);
     }
 
-    /// <remarks><c>POST /api/v1/collections</c>, needs <c>lists:write</c></remarks>
-    public Task<Collection> CreateCollectionAsync(CollectionBody body, CancellationToken cancellationToken = default)
+    /// <remarks><c>DELETE /api/v1/folders/{code}</c>, needs <c>lists:write</c></remarks>
+    public Task DeleteFolderAsync(string code, CancellationToken cancellationToken = default)
     {
-        return _core.CallAsync<Collection>(HttpMethod.Post, $"/api/v1/collections", null, body, cancellationToken);
+        return _core.NothingAsync(HttpMethod.Delete, $"/api/v1/folders/{Core.Escape(code.ToString()!)}", null, null, cancellationToken);
     }
 
-    /// <remarks><c>GET /api/v1/collections/{code}</c>, needs <c>lists:read</c></remarks>
-    public Task<Collection> GetCollectionAsync(string code, CancellationToken cancellationToken = default)
+    /// <remarks><c>PATCH /api/v1/folders/{code}</c>, needs <c>lists:write</c></remarks>
+    public Task<Folder> EditFolderAsync(string code, FolderPatch body, CancellationToken cancellationToken = default)
     {
-        return _core.CallAsync<Collection>(HttpMethod.Get, $"/api/v1/collections/{Core.Escape(code.ToString()!)}", null, null, cancellationToken);
+        return _core.CallAsync<Folder>(HttpMethod.Patch, $"/api/v1/folders/{Core.Escape(code.ToString()!)}", null, body, cancellationToken);
     }
 
-    /// <remarks><c>GET /api/v1/collections</c>, needs <c>lists:read</c></remarks>
-    public Task<Page<Collection>> ListMyCollectionsAsync(CancellationToken cancellationToken = default)
+    /// <remarks><c>GET /api/v1/folders/{code}</c>, needs <c>lists:read</c></remarks>
+    public Task<Folder> GetFolderAsync(string code, CancellationToken cancellationToken = default)
     {
-        return _core.CallAsync<Page<Collection>>(HttpMethod.Get, $"/api/v1/collections", null, null, cancellationToken);
+        return _core.CallAsync<Folder>(HttpMethod.Get, $"/api/v1/folders/{Core.Escape(code.ToString()!)}", null, null, cancellationToken);
     }
 
-    /// <summary>
-    /// It used to answer the whole thing, which is the bug this api's own rules
-    /// already name: a caller with four hundred titles got four hundred rows and a
-    /// caller with four thousand got four thousand, and the only reason nobody was
-    /// hurt by it is that nobody was using this door. `total` is beside the items
-    /// because the paging is by offset, which is exactly when a caller has to know
-    /// how far the list goes.
-    /// </summary>
-    /// <remarks><c>GET /api/v1/lists</c>, needs <c>lists:read</c></remarks>
-    public Task<Page<ListEntry>> ListMyListAsync(string? status = null, long? limit = null, long? offset = null, CancellationToken cancellationToken = default)
+    /// <remarks><c>GET /api/v1/progress/{shikimori_id}</c>, needs <c>lists:read</c></remarks>
+    public Task<Progress> GetProgressAsync(int shikimoriId, CancellationToken cancellationToken = default)
+    {
+        return _core.CallAsync<Progress>(HttpMethod.Get, $"/api/v1/progress/{Core.Escape(shikimoriId.ToString()!)}", null, null, cancellationToken);
+    }
+
+    /// <remarks><c>GET /api/v1/folders/{code}/items</c>, needs <c>lists:read</c></remarks>
+    public Task<Page<FolderItem>> ListFolderItemsAsync(string code, string? q = null, CancellationToken cancellationToken = default)
     {
         var query = new (string, object?)[]
         {
-            ("status", status),
-            ("limit", limit),
-            ("offset", offset),
+            ("q", q),
         };
-        return _core.CallAsync<Page<ListEntry>>(HttpMethod.Get, $"/api/v1/lists", query, null, cancellationToken);
+        return _core.CallAsync<Page<FolderItem>>(HttpMethod.Get, $"/api/v1/folders/{Core.Escape(code.ToString()!)}/items", query, null, cancellationToken);
     }
 
-    /// <summary>
-    /// Every row of <see cref="ListMyListAsync"/>, a page at a time.
-    ///
-    /// Stops when a page comes back shorter than it asked for rather than
-    /// when <c>Total</c> is reached: the list can grow while it is being read,
-    /// and counting against a number from the first page walks off the end.
-    /// </summary>
-    public async IAsyncEnumerable<ListEntry> ListMyListAllAsync(string? status = null, long? limit = null, long? offset = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    /// <remarks><c>GET /api/v1/folders</c>, needs <c>lists:read</c></remarks>
+    public Task<Page<Folder>> ListMyFoldersAsync(CancellationToken cancellationToken = default)
     {
-        var window = limit ?? 100;
-        var at = offset ?? 0;
-        while (true)
-        {
-            var page = await ListMyListAsync(limit: window, offset: at, status: status, cancellationToken: cancellationToken).ConfigureAwait(false);
-            foreach (var row in page.Items)
-            {
-                yield return row;
-            }
-            if (page.Items.Count < window)
-            {
-                yield break;
-            }
-            at += page.Items.Count;
-        }
+        return _core.CallAsync<Page<Folder>>(HttpMethod.Get, $"/api/v1/folders", null, null, cancellationToken);
     }
 
-    /// <summary>
-    /// The same `plans::domain::rate` the site calls, so the two doors cannot come
-    /// to disagree about what a score is — which is the whole reason the domain
-    /// exists. What differs is what this surface always differs by: 404 where the
-    /// site answers 204 for a delete that removed nothing.
-    /// </summary>
-    /// <remarks><c>PUT /api/v1/lists/{shikimori_id}/score</c>, needs <c>lists:write</c></remarks>
-    public Task<ListEntry> RateListEntryAsync(int shikimoriId, ScoreBody body, CancellationToken cancellationToken = default)
+    /// <remarks><c>PUT /api/v1/progress/{shikimori_id}/score</c>, needs <c>lists:write</c></remarks>
+    public Task<Progress> RateTitleAsync(int shikimoriId, ScoreBody body, CancellationToken cancellationToken = default)
     {
-        return _core.CallAsync<ListEntry>(HttpMethod.Put, $"/api/v1/lists/{Core.Escape(shikimoriId.ToString()!)}/score", null, body, cancellationToken);
+        return _core.CallAsync<Progress>(HttpMethod.Put, $"/api/v1/progress/{Core.Escape(shikimoriId.ToString()!)}/score", null, body, cancellationToken);
     }
 
-    /// <remarks><c>DELETE /api/v1/collections/{code}/items/{shikimori_id}</c>, needs <c>lists:write</c></remarks>
-    public Task RemoveCollectionItemAsync(string code, int shikimoriId, CancellationToken cancellationToken = default)
+    /// <remarks><c>DELETE /api/v1/folders/{code}/items/{shikimori_id}</c>, needs <c>lists:write</c></remarks>
+    public Task RemoveFolderItemAsync(string code, int shikimoriId, CancellationToken cancellationToken = default)
     {
-        return _core.NothingAsync(HttpMethod.Delete, $"/api/v1/collections/{Core.Escape(code.ToString()!)}/items/{Core.Escape(shikimoriId.ToString()!)}", null, null, cancellationToken);
+        return _core.NothingAsync(HttpMethod.Delete, $"/api/v1/folders/{Core.Escape(code.ToString()!)}/items/{Core.Escape(shikimoriId.ToString()!)}", null, null, cancellationToken);
     }
 
-    /// <remarks><c>DELETE /api/v1/lists/{shikimori_id}</c>, needs <c>lists:write</c></remarks>
-    public Task RemoveListEntryAsync(int shikimoriId, CancellationToken cancellationToken = default)
+    /// <remarks><c>PUT /api/v1/progress/{shikimori_id}</c>, needs <c>lists:write</c></remarks>
+    public Task<Progress> SetProgressAsync(int shikimoriId, EpisodeBody body, CancellationToken cancellationToken = default)
     {
-        return _core.NothingAsync(HttpMethod.Delete, $"/api/v1/lists/{Core.Escape(shikimoriId.ToString()!)}", null, null, cancellationToken);
+        return _core.CallAsync<Progress>(HttpMethod.Put, $"/api/v1/progress/{Core.Escape(shikimoriId.ToString()!)}", null, body, cancellationToken);
     }
 
-    /// <remarks><c>PUT /api/v1/lists/{shikimori_id}</c>, needs <c>lists:write</c></remarks>
-    public Task<ListEntry> SaveListEntryAsync(int shikimoriId, ListBody body, CancellationToken cancellationToken = default)
+    /// <remarks><c>DELETE /api/v1/progress/{shikimori_id}/score</c>, needs <c>lists:write</c></remarks>
+    public Task UnrateTitleAsync(int shikimoriId, CancellationToken cancellationToken = default)
     {
-        return _core.CallAsync<ListEntry>(HttpMethod.Put, $"/api/v1/lists/{Core.Escape(shikimoriId.ToString()!)}", null, body, cancellationToken);
-    }
-
-    /// <remarks><c>DELETE /api/v1/lists/{shikimori_id}/score</c>, needs <c>lists:write</c></remarks>
-    public Task UnrateListEntryAsync(int shikimoriId, CancellationToken cancellationToken = default)
-    {
-        return _core.NothingAsync(HttpMethod.Delete, $"/api/v1/lists/{Core.Escape(shikimoriId.ToString()!)}/score", null, null, cancellationToken);
+        return _core.NothingAsync(HttpMethod.Delete, $"/api/v1/progress/{Core.Escape(shikimoriId.ToString()!)}/score", null, null, cancellationToken);
     }
 }
 

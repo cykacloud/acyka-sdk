@@ -141,102 +141,6 @@ class CharacterCard:
 
 
 @dataclass(frozen=True, slots=True)
-class Collection:
-    """A shelf somebody named."""
-
-    code: str
-    name: str
-    about: str
-    icon: str
-    #: `public` | `unlisted` | `private`
-    visibility: str
-    #: whether anyone who can read it may also add to it
-    shared: bool
-    count: int
-    saves: int
-    owner: str
-    owner_verified: bool
-    covers: list[str]
-    at: str
-    edited: str
-    hue: int | None = None
-    owner_avatar: str | None = None
-
-    @classmethod
-    def _parse(cls, raw: Any) -> Collection:
-        return cls(
-            code=raw["code"],
-            name=raw["name"],
-            about=raw["about"],
-            icon=raw["icon"],
-            visibility=raw["visibility"],
-            shared=raw["shared"],
-            count=raw["count"],
-            saves=raw["saves"],
-            owner=raw["owner"],
-            owner_verified=raw["owner_verified"],
-            covers=raw["covers"],
-            at=raw["at"],
-            edited=raw["edited"],
-            hue=raw.get("hue"),
-            owner_avatar=raw.get("owner_avatar"),
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class CollectionBody:
-    name: str
-    about: str | None = None
-    icon: str | None = None
-    hue: int | None = None
-    visibility: str | None = None
-    shared: bool | None = None
-
-    @classmethod
-    def _parse(cls, raw: Any) -> CollectionBody:
-        return cls(
-            name=raw["name"],
-            about=raw.get("about"),
-            icon=raw.get("icon"),
-            hue=raw.get("hue"),
-            visibility=raw.get("visibility"),
-            shared=raw.get("shared"),
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class CollectionItem:
-    shikimori_id: int
-    title: str
-    at: str
-    poster: str | None = None
-    added_by: str | None = None
-
-    @classmethod
-    def _parse(cls, raw: Any) -> CollectionItem:
-        return cls(
-            shikimori_id=raw["shikimori_id"],
-            title=raw["title"],
-            at=raw["at"],
-            poster=raw.get("poster"),
-            added_by=raw.get("added_by"),
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class EntryBody:
-    title: str
-    poster: str | None = None
-
-    @classmethod
-    def _parse(cls, raw: Any) -> EntryBody:
-        return cls(
-            title=raw["title"],
-            poster=raw.get("poster"),
-        )
-
-
-@dataclass(frozen=True, slots=True)
 class Episode:
     """The preview frames one episode has."""
 
@@ -252,63 +156,132 @@ class Episode:
 
 
 @dataclass(frozen=True, slots=True)
-class ListBody:
-    title: str
-    poster: str | None = None
-    status: str | None = None
-    episode: int | None = None
+class EpisodeBody:
+    episode: int
+    rewatching: bool | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> ListBody:
+    def _parse(cls, raw: Any) -> EpisodeBody:
         return cls(
-            title=raw["title"],
-            poster=raw.get("poster"),
-            status=raw.get("status"),
-            episode=raw.get("episode"),
+            episode=raw["episode"],
+            rewatching=raw.get("rewatching"),
         )
 
 
 @dataclass(frozen=True, slots=True)
-class ListEntry:
-    """One row of somebody's list.
+class Folder:
+    """A folder: a status somebody keeps titles under, or a shelf they named.
 
-    One shape for a caller's own list and for somebody else's, because it is one
-    thing. Two shapes differing by a field would be two unwrappers in every SDK
-    for a row that means exactly the same in both places.
+    The five status categories are exclusive — a title sits in at most one of an
+    account's `watching`, `planned`, `done`, `paused` and `dropped` folders —
+    and `other` folders hold whatever they like.
     """
 
-    shikimori_id: int
-    title: str
-    #: `planned` | `watching` | `rewatching` | `paused` | `done` | `dropped`
-    status: str
-    #: how many they have watched
-    episode: int
-    #: RFC 3339, and a string rather than a timestamp type for a reason that is
-    #: about having one shape: this row comes from two places, and the site's own
-    #: reader already formats it. A parse on this side to fit a stricter type would
-    #: need something to do when it failed, and every honest answer to that is a
-    #: lie about when somebody watched something.
+    code: str
+    #: `watching` | `planned` | `done` | `paused` | `dropped` | `other`
+    category: str
+    #: `#RRGGBB`
+    color: str
+    about: str
+    public: bool
+    count: int
+    #: the account it belongs to, by its current name
+    owner: str
+    #: the three newest posters in it
+    posters: list[str]
     at: str
-    poster: str | None = None
-    #: How many the catalogue holds, so a counter knows where the series stops.
-    #: Absent where the catalogue does not carry it or does not know — an
-    #: announcement, and a good half of what is airing — and absent means "no
-    #: ceiling" rather than "none".
-    episodes: int | None = None
-    #: what they thought of it; null for a title they have not judged
-    score: int | None = None
+    edited: str
+    #: null: the category's own name, in whatever language the reader uses
+    name: str | None = None
+    cover: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> ListEntry:
+    def _parse(cls, raw: Any) -> Folder:
+        return cls(
+            code=raw["code"],
+            category=raw["category"],
+            color=raw["color"],
+            about=raw["about"],
+            public=raw["public"],
+            count=raw["count"],
+            owner=raw["owner"],
+            posters=raw["posters"],
+            at=raw["at"],
+            edited=raw["edited"],
+            name=raw.get("name"),
+            cover=raw.get("cover"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class FolderBody:
+    #: `watching` | `planned` | `done` | `paused` | `dropped` | `other`
+    category: str
+    #: leave out for the category's own name
+    name: str | None = None
+    #: `#rrggbb`; leave out for the category's colour
+    color: str | None = None
+
+    @classmethod
+    def _parse(cls, raw: Any) -> FolderBody:
+        return cls(
+            category=raw["category"],
+            name=raw.get("name"),
+            color=raw.get("color"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class FolderItem:
+    shikimori_id: int
+    title: str
+    #: what its authors wrote beside it
+    note: str
+    position: int
+    at: str
+    poster: str | None = None
+    #: the group it sits in, if the folder has any
+    group_id: int | None = None
+
+    @classmethod
+    def _parse(cls, raw: Any) -> FolderItem:
         return cls(
             shikimori_id=raw["shikimori_id"],
             title=raw["title"],
-            status=raw["status"],
-            episode=raw["episode"],
+            note=raw["note"],
+            position=raw["position"],
             at=raw["at"],
             poster=raw.get("poster"),
-            episodes=raw.get("episodes"),
-            score=raw.get("score"),
+            group_id=raw.get("group_id"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class FolderPatch:
+    #: `""` gives the folder its category's name back
+    name: str | None = None
+    about: str | None = None
+    color: str | None = None
+    public: bool | None = None
+
+    @classmethod
+    def _parse(cls, raw: Any) -> FolderPatch:
+        return cls(
+            name=raw.get("name"),
+            about=raw.get("about"),
+            color=raw.get("color"),
+            public=raw.get("public"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ItemBody:
+    note: str | None = None
+
+    @classmethod
+    def _parse(cls, raw: Any) -> ItemBody:
+        return cls(
+            note=raw.get("note"),
         )
 
 
@@ -536,6 +509,37 @@ class Profile:
 
 
 @dataclass(frozen=True, slots=True)
+class Progress:
+    """How far through a title somebody is. It belongs to the title, not to a
+    folder: taking a title out of every folder keeps it.
+    """
+
+    shikimori_id: int
+    episode: int
+    rewatching: bool
+    at: str
+    #: the status folder it is in, if any: `watching` | `planned` | `done` |
+    #: `paused` | `dropped`
+    status: str | None = None
+    #: absent where the catalogue does not know, which is "no ceiling", not "none"
+    episodes: int | None = None
+    #: 1-10; null for a title they have not judged
+    score: int | None = None
+
+    @classmethod
+    def _parse(cls, raw: Any) -> Progress:
+        return cls(
+            shikimori_id=raw["shikimori_id"],
+            episode=raw["episode"],
+            rewatching=raw["rewatching"],
+            at=raw["at"],
+            status=raw.get("status"),
+            episodes=raw.get("episodes"),
+            score=raw.get("score"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class Refusal:
     """Every refusal on this door, in the one shape they all take.
 
@@ -595,16 +599,13 @@ class Related:
 
 @dataclass(frozen=True, slots=True)
 class ScoreBody:
+    #: 1 to 10
     score: int
-    title: str | None = None
-    poster: str | None = None
 
     @classmethod
     def _parse(cls, raw: Any) -> ScoreBody:
         return cls(
             score=raw["score"],
-            title=raw.get("title"),
-            poster=raw.get("poster"),
         )
 
 

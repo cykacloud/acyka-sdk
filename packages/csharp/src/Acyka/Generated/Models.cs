@@ -86,51 +86,6 @@ public sealed record CharacterCard(
 );
 
 /// <summary>
-/// A shelf somebody named.
-/// </summary>
-/// <param name="Visibility">`public` | `unlisted` | `private`</param>
-/// <param name="Shared">whether anyone who can read it may also add to it</param>
-public sealed record Collection(
-    [property: JsonPropertyName("code")] string Code,
-    [property: JsonPropertyName("name")] string Name,
-    [property: JsonPropertyName("about")] string About,
-    [property: JsonPropertyName("icon")] string Icon,
-    [property: JsonPropertyName("visibility")] string Visibility,
-    [property: JsonPropertyName("shared")] bool Shared,
-    [property: JsonPropertyName("count")] long Count,
-    [property: JsonPropertyName("saves")] long Saves,
-    [property: JsonPropertyName("owner")] string Owner,
-    [property: JsonPropertyName("owner_verified")] bool OwnerVerified,
-    [property: JsonPropertyName("covers")] IReadOnlyList<string> Covers,
-    [property: JsonPropertyName("at")] string At,
-    [property: JsonPropertyName("edited")] string Edited,
-    [property: JsonPropertyName("hue")] int? Hue = null,
-    [property: JsonPropertyName("owner_avatar")] string? OwnerAvatar = null
-);
-
-public sealed record CollectionBody(
-    [property: JsonPropertyName("name")] string Name,
-    [property: JsonPropertyName("about")] string? About = null,
-    [property: JsonPropertyName("icon")] string? Icon = null,
-    [property: JsonPropertyName("hue")] int? Hue = null,
-    [property: JsonPropertyName("visibility")] string? Visibility = null,
-    [property: JsonPropertyName("shared")] bool? Shared = null
-);
-
-public sealed record CollectionItem(
-    [property: JsonPropertyName("shikimori_id")] int ShikimoriId,
-    [property: JsonPropertyName("title")] string Title,
-    [property: JsonPropertyName("at")] string At,
-    [property: JsonPropertyName("poster")] string? Poster = null,
-    [property: JsonPropertyName("added_by")] string? AddedBy = null
-);
-
-public sealed record EntryBody(
-    [property: JsonPropertyName("title")] string Title,
-    [property: JsonPropertyName("poster")] string? Poster = null
-);
-
-/// <summary>
 /// The preview frames one episode has.
 /// </summary>
 public sealed record Episode(
@@ -138,34 +93,69 @@ public sealed record Episode(
     [property: JsonPropertyName("shots")] IReadOnlyList<string> Shots
 );
 
-public sealed record ListBody(
-    [property: JsonPropertyName("title")] string Title,
-    [property: JsonPropertyName("poster")] string? Poster = null,
-    [property: JsonPropertyName("status")] string? Status = null,
-    [property: JsonPropertyName("episode")] int? Episode = null
+public sealed record EpisodeBody(
+    [property: JsonPropertyName("episode")] int Episode,
+    [property: JsonPropertyName("rewatching")] bool? Rewatching = null
 );
 
 /// <summary>
-/// One row of somebody's list.
+/// A folder: a status somebody keeps titles under, or a shelf they named.
 /// 
-/// One shape for a caller's own list and for somebody else's, because it is one
-/// thing. Two shapes differing by a field would be two unwrappers in every SDK
-/// for a row that means exactly the same in both places.
+/// The five status categories are exclusive — a title sits in at most one of an
+/// account's `watching`, `planned`, `done`, `paused` and `dropped` folders —
+/// and `other` folders hold whatever they like.
 /// </summary>
-/// <param name="Status">`planned` | `watching` | `rewatching` | `paused` | `done` | `dropped`</param>
-/// <param name="Episode">how many they have watched</param>
-/// <param name="At">RFC 3339, and a string rather than a timestamp type for a reason that is about having one shape: this row comes from two places, and the site's own reader already formats it. A parse on this side to fit a stricter type would need something to do when it failed, and every honest answer to that is a lie about when somebody watched something.</param>
-/// <param name="Episodes">How many the catalogue holds, so a counter knows where the series stops. Absent where the catalogue does not carry it or does not know — an announcement, and a good half of what is airing — and absent means "no ceiling" rather than "none".</param>
-/// <param name="Score">what they thought of it; null for a title they have not judged</param>
-public sealed record ListEntry(
+/// <param name="Category">`watching` | `planned` | `done` | `paused` | `dropped` | `other`</param>
+/// <param name="Color">`#RRGGBB`</param>
+/// <param name="Owner">the account it belongs to, by its current name</param>
+/// <param name="Posters">the three newest posters in it</param>
+/// <param name="Name">null: the category's own name, in whatever language the reader uses</param>
+public sealed record Folder(
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("category")] string Category,
+    [property: JsonPropertyName("color")] string Color,
+    [property: JsonPropertyName("about")] string About,
+    [property: JsonPropertyName("public")] bool Public,
+    [property: JsonPropertyName("count")] long Count,
+    [property: JsonPropertyName("owner")] string Owner,
+    [property: JsonPropertyName("posters")] IReadOnlyList<string> Posters,
+    [property: JsonPropertyName("at")] string At,
+    [property: JsonPropertyName("edited")] string Edited,
+    [property: JsonPropertyName("name")] string? Name = null,
+    [property: JsonPropertyName("cover")] string? Cover = null
+);
+
+/// <param name="Category">`watching` | `planned` | `done` | `paused` | `dropped` | `other`</param>
+/// <param name="Name">leave out for the category's own name</param>
+/// <param name="Color">`#rrggbb`; leave out for the category's colour</param>
+public sealed record FolderBody(
+    [property: JsonPropertyName("category")] string Category,
+    [property: JsonPropertyName("name")] string? Name = null,
+    [property: JsonPropertyName("color")] string? Color = null
+);
+
+/// <param name="Note">what its authors wrote beside it</param>
+/// <param name="GroupId">the group it sits in, if the folder has any</param>
+public sealed record FolderItem(
     [property: JsonPropertyName("shikimori_id")] int ShikimoriId,
     [property: JsonPropertyName("title")] string Title,
-    [property: JsonPropertyName("status")] string Status,
-    [property: JsonPropertyName("episode")] int Episode,
+    [property: JsonPropertyName("note")] string Note,
+    [property: JsonPropertyName("position")] int Position,
     [property: JsonPropertyName("at")] string At,
     [property: JsonPropertyName("poster")] string? Poster = null,
-    [property: JsonPropertyName("episodes")] int? Episodes = null,
-    [property: JsonPropertyName("score")] int? Score = null
+    [property: JsonPropertyName("group_id")] long? GroupId = null
+);
+
+/// <param name="Name">`""` gives the folder its category's name back</param>
+public sealed record FolderPatch(
+    [property: JsonPropertyName("name")] string? Name = null,
+    [property: JsonPropertyName("about")] string? About = null,
+    [property: JsonPropertyName("color")] string? Color = null,
+    [property: JsonPropertyName("public")] bool? Public = null
+);
+
+public sealed record ItemBody(
+    [property: JsonPropertyName("note")] string? Note = null
 );
 
 /// <summary>
@@ -283,6 +273,23 @@ public sealed record Profile(
 );
 
 /// <summary>
+/// How far through a title somebody is. It belongs to the title, not to a
+/// folder: taking a title out of every folder keeps it.
+/// </summary>
+/// <param name="Status">the status folder it is in, if any: `watching` | `planned` | `done` | `paused` | `dropped`</param>
+/// <param name="Episodes">absent where the catalogue does not know, which is "no ceiling", not "none"</param>
+/// <param name="Score">1-10; null for a title they have not judged</param>
+public sealed record Progress(
+    [property: JsonPropertyName("shikimori_id")] int ShikimoriId,
+    [property: JsonPropertyName("episode")] int Episode,
+    [property: JsonPropertyName("rewatching")] bool Rewatching,
+    [property: JsonPropertyName("at")] string At,
+    [property: JsonPropertyName("status")] string? Status = null,
+    [property: JsonPropertyName("episodes")] int? Episodes = null,
+    [property: JsonPropertyName("score")] int? Score = null
+);
+
+/// <summary>
 /// Every refusal on this door, in the one shape they all take.
 /// 
 /// `message` is a **phrase name and never a sentence**: one room can hold five
@@ -316,10 +323,9 @@ public sealed record Related(
     [property: JsonPropertyName("score")] double? Score = null
 );
 
+/// <param name="Score">1 to 10</param>
 public sealed record ScoreBody(
-    [property: JsonPropertyName("score")] int Score,
-    [property: JsonPropertyName("title")] string? Title = null,
-    [property: JsonPropertyName("poster")] string? Poster = null
+    [property: JsonPropertyName("score")] int Score
 );
 
 /// <summary>

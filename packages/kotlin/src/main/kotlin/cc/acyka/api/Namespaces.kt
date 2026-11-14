@@ -27,7 +27,7 @@ public abstract class Namespaces internal constructor(internal val core: Core) {
     public val people: People = People(core)
 
     /**
-     * somebody's own list and shelves
+     * somebody's own folders and how far through each title they are
      */
     public val library: Library = Library(core)
 

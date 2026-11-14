@@ -571,15 +571,15 @@ class AsyncPeople:
         )
         return Page._parse(raw, Person._parse)
 
-    async def user_collections(self, *, nick: str) -> Page[Collection]:
+    async def user_folders(self, *, nick: str) -> Page[Folder]:
         """
-        ``GET /api/v1/users/{nick}/collections``, needs ``people:read``
+        ``GET /api/v1/users/{nick}/folders``, needs ``people:read``
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/users/{quote(str(nick))}/collections",
+            f"/api/v1/users/{quote(str(nick))}/folders",
         )
-        return Page._parse(raw, Collection._parse)
+        return Page._parse(raw, Folder._parse)
 
     async def user_followers(
         self,
@@ -667,52 +667,6 @@ class AsyncPeople:
                 return
             at += len(page.items)
 
-    async def user_lists(
-        self,
-        *,
-        nick: str,
-        status: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> Page[ListEntry]:
-        """
-        ``GET /api/v1/users/{nick}/lists``, needs ``people:read``
-        """
-        raw = await self._core.call(
-            "GET",
-            f"/api/v1/users/{quote(str(nick))}/lists",
-            query={
-                "status": status,
-                "limit": limit,
-                "offset": offset,
-            },
-        )
-        return Page._parse(raw, ListEntry._parse)
-
-    async def user_lists_all(
-        self,
-        *,
-        nick: str,
-        status: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> AsyncIterator[ListEntry]:
-        """Every row of :meth:`user_lists`, a page at a time.
-
-        Stops when a page comes back shorter than it asked for rather than
-        when ``total`` is reached: the list can grow while it is being read,
-        and counting against a number from the first page walks off the end.
-        """
-        window = limit or 100
-        at = offset or 0
-        while True:
-            page = await self.user_lists(limit=window, offset=at, nick=nick, status=status)
-            for row in page.items:
-                yield row
-            if len(page.items) < window:
-                return
-            at += len(page.items)
-
     async def user_stats(self, *, nick: str) -> Stats:
         """
         ``GET /api/v1/users/{nick}/stats``, needs ``people:read``
@@ -725,172 +679,136 @@ class AsyncPeople:
 
 
 class AsyncLibrary:
-    """somebody's own list and shelves"""
+    """somebody's own folders and how far through each title they are"""
 
     def __init__(self, core: Any) -> None:
         self._core = core
 
-    async def add_collection_item(
-        self,
-        *,
-        code: str,
-        shikimori_id: int,
-        body: EntryBody,
-    ) -> CollectionItem:
+    async def add_folder_item(self, *, code: str, shikimori_id: int, body: ItemBody) -> None:
         """
-        ``PUT /api/v1/collections/{code}/items/{shikimori_id}``, needs ``lists:write``
+        ``PUT /api/v1/folders/{code}/items/{shikimori_id}``, needs ``lists:write``
         """
-        raw = await self._core.call(
+        await self._core.call(
             "PUT",
-            f"/api/v1/collections/{quote(str(code))}/items/{quote(str(shikimori_id))}",
+            f"/api/v1/folders/{quote(str(code))}/items/{quote(str(shikimori_id))}",
             body=_body(body),
         )
-        return CollectionItem._parse(raw)
+        return None
 
-    async def collection_items(self, *, code: str) -> Page[CollectionItem]:
+    async def create_folder(self, *, body: FolderBody) -> Folder:
         """
-        ``GET /api/v1/collections/{code}/items``, needs ``lists:read``
-        """
-        raw = await self._core.call(
-            "GET",
-            f"/api/v1/collections/{quote(str(code))}/items",
-        )
-        return Page._parse(raw, CollectionItem._parse)
-
-    async def create_collection(self, *, body: CollectionBody) -> Collection:
-        """
-        ``POST /api/v1/collections``, needs ``lists:write``
+        ``POST /api/v1/folders``, needs ``lists:write``
         """
         raw = await self._core.call(
             "POST",
-            "/api/v1/collections",
+            "/api/v1/folders",
             body=_body(body),
         )
-        return Collection._parse(raw)
+        return Folder._parse(raw)
 
-    async def get_collection(self, *, code: str) -> Collection:
+    async def delete_folder(self, *, code: str) -> None:
         """
-        ``GET /api/v1/collections/{code}``, needs ``lists:read``
+        ``DELETE /api/v1/folders/{code}``, needs ``lists:write``
         """
-        raw = await self._core.call(
-            "GET",
-            f"/api/v1/collections/{quote(str(code))}",
+        await self._core.call(
+            "DELETE",
+            f"/api/v1/folders/{quote(str(code))}",
         )
-        return Collection._parse(raw)
+        return None
 
-    async def list_my_collections(self) -> Page[Collection]:
+    async def edit_folder(self, *, code: str, body: FolderPatch) -> Folder:
         """
-        ``GET /api/v1/collections``, needs ``lists:read``
+        ``PATCH /api/v1/folders/{code}``, needs ``lists:write``
         """
         raw = await self._core.call(
-            "GET",
-            "/api/v1/collections",
+            "PATCH",
+            f"/api/v1/folders/{quote(str(code))}",
+            body=_body(body),
         )
-        return Page._parse(raw, Collection._parse)
+        return Folder._parse(raw)
 
-    async def list_my_list(
-        self,
-        *,
-        status: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> Page[ListEntry]:
-        """It used to answer the whole thing, which is the bug this api's own rules
-        already name: a caller with four hundred titles got four hundred rows and a
-        caller with four thousand got four thousand, and the only reason nobody was
-        hurt by it is that nobody was using this door. `total` is beside the items
-        because the paging is by offset, which is exactly when a caller has to know
-        how far the list goes.
-
-        ``GET /api/v1/lists``, needs ``lists:read``
+    async def get_folder(self, *, code: str) -> Folder:
+        """
+        ``GET /api/v1/folders/{code}``, needs ``lists:read``
         """
         raw = await self._core.call(
             "GET",
-            "/api/v1/lists",
+            f"/api/v1/folders/{quote(str(code))}",
+        )
+        return Folder._parse(raw)
+
+    async def get_progress(self, *, shikimori_id: int) -> Progress:
+        """
+        ``GET /api/v1/progress/{shikimori_id}``, needs ``lists:read``
+        """
+        raw = await self._core.call(
+            "GET",
+            f"/api/v1/progress/{quote(str(shikimori_id))}",
+        )
+        return Progress._parse(raw)
+
+    async def list_folder_items(self, *, code: str, q: str | None = None) -> Page[FolderItem]:
+        """
+        ``GET /api/v1/folders/{code}/items``, needs ``lists:read``
+        """
+        raw = await self._core.call(
+            "GET",
+            f"/api/v1/folders/{quote(str(code))}/items",
             query={
-                "status": status,
-                "limit": limit,
-                "offset": offset,
+                "q": q,
             },
         )
-        return Page._parse(raw, ListEntry._parse)
+        return Page._parse(raw, FolderItem._parse)
 
-    async def list_my_list_all(
-        self,
-        *,
-        status: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> AsyncIterator[ListEntry]:
-        """Every row of :meth:`list_my_list`, a page at a time.
-
-        Stops when a page comes back shorter than it asked for rather than
-        when ``total`` is reached: the list can grow while it is being read,
-        and counting against a number from the first page walks off the end.
+    async def list_my_folders(self) -> Page[Folder]:
         """
-        window = limit or 100
-        at = offset or 0
-        while True:
-            page = await self.list_my_list(limit=window, offset=at, status=status)
-            for row in page.items:
-                yield row
-            if len(page.items) < window:
-                return
-            at += len(page.items)
+        ``GET /api/v1/folders``, needs ``lists:read``
+        """
+        raw = await self._core.call(
+            "GET",
+            "/api/v1/folders",
+        )
+        return Page._parse(raw, Folder._parse)
 
-    async def rate_list_entry(self, *, shikimori_id: int, body: ScoreBody) -> ListEntry:
-        """The same `plans::domain::rate` the site calls, so the two doors cannot come
-        to disagree about what a score is — which is the whole reason the domain
-        exists. What differs is what this surface always differs by: 404 where the
-        site answers 204 for a delete that removed nothing.
-
-        ``PUT /api/v1/lists/{shikimori_id}/score``, needs ``lists:write``
+    async def rate_title(self, *, shikimori_id: int, body: ScoreBody) -> Progress:
+        """
+        ``PUT /api/v1/progress/{shikimori_id}/score``, needs ``lists:write``
         """
         raw = await self._core.call(
             "PUT",
-            f"/api/v1/lists/{quote(str(shikimori_id))}/score",
+            f"/api/v1/progress/{quote(str(shikimori_id))}/score",
             body=_body(body),
         )
-        return ListEntry._parse(raw)
+        return Progress._parse(raw)
 
-    async def remove_collection_item(self, *, code: str, shikimori_id: int) -> None:
+    async def remove_folder_item(self, *, code: str, shikimori_id: int) -> None:
         """
-        ``DELETE /api/v1/collections/{code}/items/{shikimori_id}``, needs ``lists:write``
+        ``DELETE /api/v1/folders/{code}/items/{shikimori_id}``, needs ``lists:write``
         """
         await self._core.call(
             "DELETE",
-            f"/api/v1/collections/{quote(str(code))}/items/{quote(str(shikimori_id))}",
+            f"/api/v1/folders/{quote(str(code))}/items/{quote(str(shikimori_id))}",
         )
         return None
 
-    async def remove_list_entry(self, *, shikimori_id: int) -> None:
+    async def set_progress(self, *, shikimori_id: int, body: EpisodeBody) -> Progress:
         """
-        ``DELETE /api/v1/lists/{shikimori_id}``, needs ``lists:write``
-        """
-        await self._core.call(
-            "DELETE",
-            f"/api/v1/lists/{quote(str(shikimori_id))}",
-        )
-        return None
-
-    async def save_list_entry(self, *, shikimori_id: int, body: ListBody) -> ListEntry:
-        """
-        ``PUT /api/v1/lists/{shikimori_id}``, needs ``lists:write``
+        ``PUT /api/v1/progress/{shikimori_id}``, needs ``lists:write``
         """
         raw = await self._core.call(
             "PUT",
-            f"/api/v1/lists/{quote(str(shikimori_id))}",
+            f"/api/v1/progress/{quote(str(shikimori_id))}",
             body=_body(body),
         )
-        return ListEntry._parse(raw)
+        return Progress._parse(raw)
 
-    async def unrate_list_entry(self, *, shikimori_id: int) -> None:
+    async def unrate_title(self, *, shikimori_id: int) -> None:
         """
-        ``DELETE /api/v1/lists/{shikimori_id}/score``, needs ``lists:write``
+        ``DELETE /api/v1/progress/{shikimori_id}/score``, needs ``lists:write``
         """
         await self._core.call(
             "DELETE",
-            f"/api/v1/lists/{quote(str(shikimori_id))}/score",
+            f"/api/v1/progress/{quote(str(shikimori_id))}/score",
         )
         return None
 

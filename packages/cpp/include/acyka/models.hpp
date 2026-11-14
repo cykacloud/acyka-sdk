@@ -49,13 +49,13 @@ struct Airing;
 struct Appearance;
 struct Character;
 struct CharacterCard;
-struct Collection;
-struct CollectionBody;
-struct CollectionItem;
-struct EntryBody;
 struct Episode;
-struct ListBody;
-struct ListEntry;
+struct EpisodeBody;
+struct Folder;
+struct FolderBody;
+struct FolderItem;
+struct FolderPatch;
+struct ItemBody;
 struct Me;
 struct Person;
 struct PersonCard;
@@ -63,6 +63,7 @@ struct PersonPage;
 struct Post;
 struct PostBody;
 struct Profile;
+struct Progress;
 struct Refusal;
 struct Related;
 struct ScoreBody;
@@ -123,88 +124,73 @@ struct CharacterCard {
     std::optional<std::string> poster;
 };
 
-/// A shelf somebody named.
-struct Collection {
-    std::string code{};
-    std::string name{};
-    std::string about{};
-    std::string icon{};
-    std::optional<std::int32_t> hue;
-    /// `public` | `unlisted` | `private`
-    std::string visibility{};
-    /// whether anyone who can read it may also add to it
-    bool shared{};
-    std::int64_t count{};
-    std::int64_t saves{};
-    std::string owner{};
-    std::optional<std::string> owner_avatar;
-    bool owner_verified{};
-    std::vector<std::string> covers{};
-    std::string at{};
-    std::string edited{};
-};
-
-struct CollectionBody {
-    std::string name{};
-    std::optional<std::string> about;
-    std::optional<std::string> icon;
-    std::optional<std::int32_t> hue;
-    std::optional<std::string> visibility;
-    std::optional<bool> shared;
-};
-
-struct CollectionItem {
-    std::int32_t shikimori_id{};
-    std::string title{};
-    std::optional<std::string> poster;
-    std::optional<std::string> added_by;
-    std::string at{};
-};
-
-struct EntryBody {
-    std::string title{};
-    std::optional<std::string> poster;
-};
-
 /// The preview frames one episode has.
 struct Episode {
     std::int32_t episode{};
     std::vector<std::string> shots{};
 };
 
-struct ListBody {
-    std::string title{};
-    std::optional<std::string> poster;
-    std::optional<std::string> status;
-    std::optional<std::int32_t> episode;
+struct EpisodeBody {
+    std::int32_t episode{};
+    std::optional<bool> rewatching;
 };
 
-/// One row of somebody's list.
+/// A folder: a status somebody keeps titles under, or a shelf they named.
 ///
-/// One shape for a caller's own list and for somebody else's, because it is one
-/// thing. Two shapes differing by a field would be two unwrappers in every SDK
-/// for a row that means exactly the same in both places.
-struct ListEntry {
+/// The five status categories are exclusive — a title sits in at most one of an
+/// account's `watching`, `planned`, `done`, `paused` and `dropped` folders —
+/// and `other` folders hold whatever they like.
+struct Folder {
+    std::string code{};
+    /// null: the category's own name, in whatever language the reader uses
+    std::optional<std::string> name;
+    /// `watching` | `planned` | `done` | `paused` | `dropped` | `other`
+    std::string category{};
+    /// `#RRGGBB`
+    std::string color{};
+    std::string about{};
+    std::optional<std::string> cover;
+    bool public_{};
+    std::int64_t count{};
+    /// the account it belongs to, by its current name
+    std::string owner{};
+    /// the three newest posters in it
+    std::vector<std::string> posters{};
+    std::string at{};
+    std::string edited{};
+};
+
+struct FolderBody {
+    /// leave out for the category's own name
+    std::optional<std::string> name;
+    /// `#rrggbb`; leave out for the category's colour
+    std::optional<std::string> color;
+    /// `watching` | `planned` | `done` | `paused` | `dropped` | `other`
+    std::string category{};
+};
+
+struct FolderItem {
     std::int32_t shikimori_id{};
     std::string title{};
     std::optional<std::string> poster;
-    /// `planned` | `watching` | `rewatching` | `paused` | `done` | `dropped`
-    std::string status{};
-    /// how many they have watched
-    std::int32_t episode{};
-    /// How many the catalogue holds, so a counter knows where the series stops.
-    /// Absent where the catalogue does not carry it or does not know — an
-    /// announcement, and a good half of what is airing — and absent means "no
-    /// ceiling" rather than "none".
-    std::optional<std::int32_t> episodes;
-    /// what they thought of it; null for a title they have not judged
-    std::optional<std::int32_t> score;
-    /// RFC 3339, and a string rather than a timestamp type for a reason that is
-    /// about having one shape: this row comes from two places, and the site's own
-    /// reader already formats it. A parse on this side to fit a stricter type would
-    /// need something to do when it failed, and every honest answer to that is a
-    /// lie about when somebody watched something.
+    /// what its authors wrote beside it
+    std::string note{};
+    /// the group it sits in, if the folder has any
+    std::optional<std::int64_t> group_id;
+    std::int32_t position{};
     std::string at{};
+};
+
+struct FolderPatch {
+    /// `""` gives the folder its category's name back
+    std::optional<std::string> name;
+    std::optional<std::string> about;
+    std::optional<std::string> color;
+    std::optional<bool> public_;
+};
+
+struct ItemBody {
+    std::optional<std::string> note;
 };
 
 /// An account, as its own token sees it.
@@ -324,6 +310,22 @@ struct Profile {
     std::string joined_at{};
 };
 
+/// How far through a title somebody is. It belongs to the title, not to a
+/// folder: taking a title out of every folder keeps it.
+struct Progress {
+    std::int32_t shikimori_id{};
+    /// the status folder it is in, if any: `watching` | `planned` | `done` |
+    /// `paused` | `dropped`
+    std::optional<std::string> status;
+    std::int32_t episode{};
+    /// absent where the catalogue does not know, which is "no ceiling", not "none"
+    std::optional<std::int32_t> episodes;
+    bool rewatching{};
+    /// 1-10; null for a title they have not judged
+    std::optional<std::int32_t> score;
+    std::string at{};
+};
+
 /// Every refusal on this door, in the one shape they all take.
 ///
 /// `message` is a **phrase name and never a sentence**: one room can hold five
@@ -357,9 +359,8 @@ struct Related {
 };
 
 struct ScoreBody {
+    /// 1 to 10
     std::int32_t score{};
-    std::optional<std::string> title;
-    std::optional<std::string> poster;
 };
 
 /// What somebody's watching adds up to.
@@ -490,20 +491,20 @@ inline void from_json(const nlohmann::json& raw, Character& out);
 inline void to_json(nlohmann::json& raw, const Character& in);
 inline void from_json(const nlohmann::json& raw, CharacterCard& out);
 inline void to_json(nlohmann::json& raw, const CharacterCard& in);
-inline void from_json(const nlohmann::json& raw, Collection& out);
-inline void to_json(nlohmann::json& raw, const Collection& in);
-inline void from_json(const nlohmann::json& raw, CollectionBody& out);
-inline void to_json(nlohmann::json& raw, const CollectionBody& in);
-inline void from_json(const nlohmann::json& raw, CollectionItem& out);
-inline void to_json(nlohmann::json& raw, const CollectionItem& in);
-inline void from_json(const nlohmann::json& raw, EntryBody& out);
-inline void to_json(nlohmann::json& raw, const EntryBody& in);
 inline void from_json(const nlohmann::json& raw, Episode& out);
 inline void to_json(nlohmann::json& raw, const Episode& in);
-inline void from_json(const nlohmann::json& raw, ListBody& out);
-inline void to_json(nlohmann::json& raw, const ListBody& in);
-inline void from_json(const nlohmann::json& raw, ListEntry& out);
-inline void to_json(nlohmann::json& raw, const ListEntry& in);
+inline void from_json(const nlohmann::json& raw, EpisodeBody& out);
+inline void to_json(nlohmann::json& raw, const EpisodeBody& in);
+inline void from_json(const nlohmann::json& raw, Folder& out);
+inline void to_json(nlohmann::json& raw, const Folder& in);
+inline void from_json(const nlohmann::json& raw, FolderBody& out);
+inline void to_json(nlohmann::json& raw, const FolderBody& in);
+inline void from_json(const nlohmann::json& raw, FolderItem& out);
+inline void to_json(nlohmann::json& raw, const FolderItem& in);
+inline void from_json(const nlohmann::json& raw, FolderPatch& out);
+inline void to_json(nlohmann::json& raw, const FolderPatch& in);
+inline void from_json(const nlohmann::json& raw, ItemBody& out);
+inline void to_json(nlohmann::json& raw, const ItemBody& in);
 inline void from_json(const nlohmann::json& raw, Me& out);
 inline void to_json(nlohmann::json& raw, const Me& in);
 inline void from_json(const nlohmann::json& raw, Person& out);
@@ -518,6 +519,8 @@ inline void from_json(const nlohmann::json& raw, PostBody& out);
 inline void to_json(nlohmann::json& raw, const PostBody& in);
 inline void from_json(const nlohmann::json& raw, Profile& out);
 inline void to_json(nlohmann::json& raw, const Profile& in);
+inline void from_json(const nlohmann::json& raw, Progress& out);
+inline void to_json(nlohmann::json& raw, const Progress& in);
 inline void from_json(const nlohmann::json& raw, Refusal& out);
 inline void to_json(nlohmann::json& raw, const Refusal& in);
 inline void from_json(const nlohmann::json& raw, Related& out);
@@ -632,90 +635,6 @@ inline void to_json(nlohmann::json& raw, const CharacterCard& in) {
     if (in.poster.has_value()) raw["poster"] = *in.poster;
 }
 
-inline void from_json(const nlohmann::json& raw, Collection& out) {
-    out.code = raw.at("code").get<std::string>();
-    out.name = raw.at("name").get<std::string>();
-    out.about = raw.at("about").get<std::string>();
-    out.icon = raw.at("icon").get<std::string>();
-    read_opt(raw, "hue", out.hue);
-    out.visibility = raw.at("visibility").get<std::string>();
-    out.shared = raw.at("shared").get<bool>();
-    out.count = raw.at("count").get<std::int64_t>();
-    out.saves = raw.at("saves").get<std::int64_t>();
-    out.owner = raw.at("owner").get<std::string>();
-    read_opt(raw, "owner_avatar", out.owner_avatar);
-    out.owner_verified = raw.at("owner_verified").get<bool>();
-    out.covers = raw.at("covers").get<std::vector<std::string>>();
-    out.at = raw.at("at").get<std::string>();
-    out.edited = raw.at("edited").get<std::string>();
-}
-
-inline void to_json(nlohmann::json& raw, const Collection& in) {
-    raw = nlohmann::json::object();
-    raw["code"] = in.code;
-    raw["name"] = in.name;
-    raw["about"] = in.about;
-    raw["icon"] = in.icon;
-    if (in.hue.has_value()) raw["hue"] = *in.hue;
-    raw["visibility"] = in.visibility;
-    raw["shared"] = in.shared;
-    raw["count"] = in.count;
-    raw["saves"] = in.saves;
-    raw["owner"] = in.owner;
-    if (in.owner_avatar.has_value()) raw["owner_avatar"] = *in.owner_avatar;
-    raw["owner_verified"] = in.owner_verified;
-    raw["covers"] = in.covers;
-    raw["at"] = in.at;
-    raw["edited"] = in.edited;
-}
-
-inline void from_json(const nlohmann::json& raw, CollectionBody& out) {
-    out.name = raw.at("name").get<std::string>();
-    read_opt(raw, "about", out.about);
-    read_opt(raw, "icon", out.icon);
-    read_opt(raw, "hue", out.hue);
-    read_opt(raw, "visibility", out.visibility);
-    read_opt(raw, "shared", out.shared);
-}
-
-inline void to_json(nlohmann::json& raw, const CollectionBody& in) {
-    raw = nlohmann::json::object();
-    raw["name"] = in.name;
-    if (in.about.has_value()) raw["about"] = *in.about;
-    if (in.icon.has_value()) raw["icon"] = *in.icon;
-    if (in.hue.has_value()) raw["hue"] = *in.hue;
-    if (in.visibility.has_value()) raw["visibility"] = *in.visibility;
-    if (in.shared.has_value()) raw["shared"] = *in.shared;
-}
-
-inline void from_json(const nlohmann::json& raw, CollectionItem& out) {
-    out.shikimori_id = raw.at("shikimori_id").get<std::int32_t>();
-    out.title = raw.at("title").get<std::string>();
-    read_opt(raw, "poster", out.poster);
-    read_opt(raw, "added_by", out.added_by);
-    out.at = raw.at("at").get<std::string>();
-}
-
-inline void to_json(nlohmann::json& raw, const CollectionItem& in) {
-    raw = nlohmann::json::object();
-    raw["shikimori_id"] = in.shikimori_id;
-    raw["title"] = in.title;
-    if (in.poster.has_value()) raw["poster"] = *in.poster;
-    if (in.added_by.has_value()) raw["added_by"] = *in.added_by;
-    raw["at"] = in.at;
-}
-
-inline void from_json(const nlohmann::json& raw, EntryBody& out) {
-    out.title = raw.at("title").get<std::string>();
-    read_opt(raw, "poster", out.poster);
-}
-
-inline void to_json(nlohmann::json& raw, const EntryBody& in) {
-    raw = nlohmann::json::object();
-    raw["title"] = in.title;
-    if (in.poster.has_value()) raw["poster"] = *in.poster;
-}
-
 inline void from_json(const nlohmann::json& raw, Episode& out) {
     out.episode = raw.at("episode").get<std::int32_t>();
     out.shots = raw.at("shots").get<std::vector<std::string>>();
@@ -727,42 +646,104 @@ inline void to_json(nlohmann::json& raw, const Episode& in) {
     raw["shots"] = in.shots;
 }
 
-inline void from_json(const nlohmann::json& raw, ListBody& out) {
-    out.title = raw.at("title").get<std::string>();
-    read_opt(raw, "poster", out.poster);
-    read_opt(raw, "status", out.status);
-    read_opt(raw, "episode", out.episode);
+inline void from_json(const nlohmann::json& raw, EpisodeBody& out) {
+    out.episode = raw.at("episode").get<std::int32_t>();
+    read_opt(raw, "rewatching", out.rewatching);
 }
 
-inline void to_json(nlohmann::json& raw, const ListBody& in) {
+inline void to_json(nlohmann::json& raw, const EpisodeBody& in) {
     raw = nlohmann::json::object();
-    raw["title"] = in.title;
-    if (in.poster.has_value()) raw["poster"] = *in.poster;
-    if (in.status.has_value()) raw["status"] = *in.status;
-    if (in.episode.has_value()) raw["episode"] = *in.episode;
+    raw["episode"] = in.episode;
+    if (in.rewatching.has_value()) raw["rewatching"] = *in.rewatching;
 }
 
-inline void from_json(const nlohmann::json& raw, ListEntry& out) {
+inline void from_json(const nlohmann::json& raw, Folder& out) {
+    out.code = raw.at("code").get<std::string>();
+    read_opt(raw, "name", out.name);
+    out.category = raw.at("category").get<std::string>();
+    out.color = raw.at("color").get<std::string>();
+    out.about = raw.at("about").get<std::string>();
+    read_opt(raw, "cover", out.cover);
+    out.public_ = raw.at("public").get<bool>();
+    out.count = raw.at("count").get<std::int64_t>();
+    out.owner = raw.at("owner").get<std::string>();
+    out.posters = raw.at("posters").get<std::vector<std::string>>();
+    out.at = raw.at("at").get<std::string>();
+    out.edited = raw.at("edited").get<std::string>();
+}
+
+inline void to_json(nlohmann::json& raw, const Folder& in) {
+    raw = nlohmann::json::object();
+    raw["code"] = in.code;
+    if (in.name.has_value()) raw["name"] = *in.name;
+    raw["category"] = in.category;
+    raw["color"] = in.color;
+    raw["about"] = in.about;
+    if (in.cover.has_value()) raw["cover"] = *in.cover;
+    raw["public"] = in.public_;
+    raw["count"] = in.count;
+    raw["owner"] = in.owner;
+    raw["posters"] = in.posters;
+    raw["at"] = in.at;
+    raw["edited"] = in.edited;
+}
+
+inline void from_json(const nlohmann::json& raw, FolderBody& out) {
+    read_opt(raw, "name", out.name);
+    read_opt(raw, "color", out.color);
+    out.category = raw.at("category").get<std::string>();
+}
+
+inline void to_json(nlohmann::json& raw, const FolderBody& in) {
+    raw = nlohmann::json::object();
+    if (in.name.has_value()) raw["name"] = *in.name;
+    if (in.color.has_value()) raw["color"] = *in.color;
+    raw["category"] = in.category;
+}
+
+inline void from_json(const nlohmann::json& raw, FolderItem& out) {
     out.shikimori_id = raw.at("shikimori_id").get<std::int32_t>();
     out.title = raw.at("title").get<std::string>();
     read_opt(raw, "poster", out.poster);
-    out.status = raw.at("status").get<std::string>();
-    out.episode = raw.at("episode").get<std::int32_t>();
-    read_opt(raw, "episodes", out.episodes);
-    read_opt(raw, "score", out.score);
+    out.note = raw.at("note").get<std::string>();
+    read_opt(raw, "group_id", out.group_id);
+    out.position = raw.at("position").get<std::int32_t>();
     out.at = raw.at("at").get<std::string>();
 }
 
-inline void to_json(nlohmann::json& raw, const ListEntry& in) {
+inline void to_json(nlohmann::json& raw, const FolderItem& in) {
     raw = nlohmann::json::object();
     raw["shikimori_id"] = in.shikimori_id;
     raw["title"] = in.title;
     if (in.poster.has_value()) raw["poster"] = *in.poster;
-    raw["status"] = in.status;
-    raw["episode"] = in.episode;
-    if (in.episodes.has_value()) raw["episodes"] = *in.episodes;
-    if (in.score.has_value()) raw["score"] = *in.score;
+    raw["note"] = in.note;
+    if (in.group_id.has_value()) raw["group_id"] = *in.group_id;
+    raw["position"] = in.position;
     raw["at"] = in.at;
+}
+
+inline void from_json(const nlohmann::json& raw, FolderPatch& out) {
+    read_opt(raw, "name", out.name);
+    read_opt(raw, "about", out.about);
+    read_opt(raw, "color", out.color);
+    read_opt(raw, "public", out.public_);
+}
+
+inline void to_json(nlohmann::json& raw, const FolderPatch& in) {
+    raw = nlohmann::json::object();
+    if (in.name.has_value()) raw["name"] = *in.name;
+    if (in.about.has_value()) raw["about"] = *in.about;
+    if (in.color.has_value()) raw["color"] = *in.color;
+    if (in.public_.has_value()) raw["public"] = *in.public_;
+}
+
+inline void from_json(const nlohmann::json& raw, ItemBody& out) {
+    read_opt(raw, "note", out.note);
+}
+
+inline void to_json(nlohmann::json& raw, const ItemBody& in) {
+    raw = nlohmann::json::object();
+    if (in.note.has_value()) raw["note"] = *in.note;
 }
 
 inline void from_json(const nlohmann::json& raw, Me& out) {
@@ -928,6 +909,27 @@ inline void to_json(nlohmann::json& raw, const Profile& in) {
     raw["joined_at"] = in.joined_at;
 }
 
+inline void from_json(const nlohmann::json& raw, Progress& out) {
+    out.shikimori_id = raw.at("shikimori_id").get<std::int32_t>();
+    read_opt(raw, "status", out.status);
+    out.episode = raw.at("episode").get<std::int32_t>();
+    read_opt(raw, "episodes", out.episodes);
+    out.rewatching = raw.at("rewatching").get<bool>();
+    read_opt(raw, "score", out.score);
+    out.at = raw.at("at").get<std::string>();
+}
+
+inline void to_json(nlohmann::json& raw, const Progress& in) {
+    raw = nlohmann::json::object();
+    raw["shikimori_id"] = in.shikimori_id;
+    if (in.status.has_value()) raw["status"] = *in.status;
+    raw["episode"] = in.episode;
+    if (in.episodes.has_value()) raw["episodes"] = *in.episodes;
+    raw["rewatching"] = in.rewatching;
+    if (in.score.has_value()) raw["score"] = *in.score;
+    raw["at"] = in.at;
+}
+
 inline void from_json(const nlohmann::json& raw, Refusal& out) {
     out.message = raw.at("message").get<std::string>();
     read_opt(raw, "detail", out.detail);
@@ -966,15 +968,11 @@ inline void to_json(nlohmann::json& raw, const Related& in) {
 
 inline void from_json(const nlohmann::json& raw, ScoreBody& out) {
     out.score = raw.at("score").get<std::int32_t>();
-    read_opt(raw, "title", out.title);
-    read_opt(raw, "poster", out.poster);
 }
 
 inline void to_json(nlohmann::json& raw, const ScoreBody& in) {
     raw = nlohmann::json::object();
     raw["score"] = in.score;
-    if (in.title.has_value()) raw["title"] = *in.title;
-    if (in.poster.has_value()) raw["poster"] = *in.poster;
 }
 
 inline void from_json(const nlohmann::json& raw, Stats& out) {

@@ -27,7 +27,7 @@ public partial class AcykaClient
     public PeopleApi People { get; private set; } = null!;
 
     /// <summary>
-    /// somebody's own list and shelves
+    /// somebody's own folders and how far through each title they are
     /// </summary>
     public LibraryApi Library { get; private set; } = null!;
 

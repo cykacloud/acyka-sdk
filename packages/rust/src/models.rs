@@ -105,111 +105,6 @@ pub struct CharacterCard {
     pub poster: Option<String>,
 }
 
-/// A shelf somebody named.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub struct Collection {
-    pub code: String,
-    pub name: String,
-    pub about: String,
-    pub icon: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hue: Option<i32>,
-    /// `public` | `unlisted` | `private`
-    pub visibility: String,
-    /// whether anyone who can read it may also add to it
-    pub shared: bool,
-    pub count: i64,
-    pub saves: i64,
-    pub owner: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub owner_avatar: Option<String>,
-    pub owner_verified: bool,
-    pub covers: Vec<String>,
-    pub at: String,
-    pub edited: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Default)]
-pub struct CollectionBody {
-    pub name: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub about: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub icon: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hue: Option<i32>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub visibility: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub shared: Option<bool>,
-}
-
-impl CollectionBody {
-    pub fn new(name: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            ..Default::default()
-        }
-    }
-
-    pub fn about(mut self, value: impl Into<String>) -> Self {
-        self.about = Some(value.into());
-        self
-    }
-
-    pub fn icon(mut self, value: impl Into<String>) -> Self {
-        self.icon = Some(value.into());
-        self
-    }
-
-    pub fn hue(mut self, value: impl Into<i32>) -> Self {
-        self.hue = Some(value.into());
-        self
-    }
-
-    pub fn visibility(mut self, value: impl Into<String>) -> Self {
-        self.visibility = Some(value.into());
-        self
-    }
-
-    pub fn shared(mut self, value: impl Into<bool>) -> Self {
-        self.shared = Some(value.into());
-        self
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub struct CollectionItem {
-    pub shikimori_id: i32,
-    pub title: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub poster: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub added_by: Option<String>,
-    pub at: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Default)]
-pub struct EntryBody {
-    pub title: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub poster: Option<String>,
-}
-
-impl EntryBody {
-    pub fn new(title: impl Into<String>) -> Self {
-        Self {
-            title: title.into(),
-            ..Default::default()
-        }
-    }
-
-    pub fn poster(mut self, value: impl Into<String>) -> Self {
-        self.poster = Some(value.into());
-        self
-    }
-}
-
 /// The preview frames one episode has.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Episode {
@@ -218,70 +113,132 @@ pub struct Episode {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Default)]
-pub struct ListBody {
-    pub title: String,
+pub struct EpisodeBody {
+    pub episode: i32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub poster: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub episode: Option<i32>,
+    pub rewatching: Option<bool>,
 }
 
-impl ListBody {
-    pub fn new(title: impl Into<String>) -> Self {
+impl EpisodeBody {
+    pub fn new(episode: impl Into<i32>) -> Self {
         Self {
-            title: title.into(),
+            episode: episode.into(),
             ..Default::default()
         }
     }
 
-    pub fn poster(mut self, value: impl Into<String>) -> Self {
-        self.poster = Some(value.into());
-        self
-    }
-
-    pub fn status(mut self, value: impl Into<String>) -> Self {
-        self.status = Some(value.into());
-        self
-    }
-
-    pub fn episode(mut self, value: impl Into<i32>) -> Self {
-        self.episode = Some(value.into());
+    pub fn rewatching(mut self, value: impl Into<bool>) -> Self {
+        self.rewatching = Some(value.into());
         self
     }
 }
 
-/// One row of somebody's list.
+/// A folder: a status somebody keeps titles under, or a shelf they named.
 ///
-/// One shape for a caller's own list and for somebody else's, because it is one
-/// thing. Two shapes differing by a field would be two unwrappers in every SDK
-/// for a row that means exactly the same in both places.
+/// The five status categories are exclusive — a title sits in at most one of an
+/// account's `watching`, `planned`, `done`, `paused` and `dropped` folders —
+/// and `other` folders hold whatever they like.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub struct ListEntry {
+pub struct Folder {
+    pub code: String,
+    /// null: the category's own name, in whatever language the reader uses
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// `watching` | `planned` | `done` | `paused` | `dropped` | `other`
+    pub category: String,
+    /// `#RRGGBB`
+    pub color: String,
+    pub about: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cover: Option<String>,
+    pub public: bool,
+    pub count: i64,
+    /// the account it belongs to, by its current name
+    pub owner: String,
+    /// the three newest posters in it
+    pub posters: Vec<String>,
+    pub at: String,
+    pub edited: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Default)]
+pub struct FolderBody {
+    /// leave out for the category's own name
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// `#rrggbb`; leave out for the category's colour
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// `watching` | `planned` | `done` | `paused` | `dropped` | `other`
+    pub category: String,
+}
+
+impl FolderBody {
+    pub fn new(category: impl Into<String>) -> Self {
+        Self {
+            category: category.into(),
+            ..Default::default()
+        }
+    }
+
+    /// leave out for the category's own name
+    pub fn name(mut self, value: impl Into<String>) -> Self {
+        self.name = Some(value.into());
+        self
+    }
+
+    /// `#rrggbb`; leave out for the category's colour
+    pub fn color(mut self, value: impl Into<String>) -> Self {
+        self.color = Some(value.into());
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct FolderItem {
     pub shikimori_id: i32,
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub poster: Option<String>,
-    /// `planned` | `watching` | `rewatching` | `paused` | `done` | `dropped`
-    pub status: String,
-    /// how many they have watched
-    pub episode: i32,
-    /// How many the catalogue holds, so a counter knows where the series stops.
-    /// Absent where the catalogue does not carry it or does not know — an
-    /// announcement, and a good half of what is airing — and absent means "no
-    /// ceiling" rather than "none".
+    /// what its authors wrote beside it
+    pub note: String,
+    /// the group it sits in, if the folder has any
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub episodes: Option<i32>,
-    /// what they thought of it; null for a title they have not judged
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub score: Option<i32>,
-    /// RFC 3339, and a string rather than a timestamp type for a reason that is
-    /// about having one shape: this row comes from two places, and the site's own
-    /// reader already formats it. A parse on this side to fit a stricter type would
-    /// need something to do when it failed, and every honest answer to that is a
-    /// lie about when somebody watched something.
+    pub group_id: Option<i64>,
+    pub position: i32,
     pub at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct FolderPatch {
+    /// `""` gives the folder its category's name back
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub about: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Default)]
+pub struct ItemBody {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
+impl ItemBody {
+    pub fn new() -> Self {
+        Self {
+            ..Default::default()
+        }
+    }
+
+    pub fn note(mut self, value: impl Into<String>) -> Self {
+        self.note = Some(value.into());
+        self
+    }
 }
 
 /// An account, as its own token sees it.
@@ -481,6 +438,26 @@ pub struct Profile {
     pub joined_at: String,
 }
 
+/// How far through a title somebody is. It belongs to the title, not to a
+/// folder: taking a title out of every folder keeps it.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct Progress {
+    pub shikimori_id: i32,
+    /// the status folder it is in, if any: `watching` | `planned` | `done` |
+    /// `paused` | `dropped`
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    pub episode: i32,
+    /// absent where the catalogue does not know, which is "no ceiling", not "none"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub episodes: Option<i32>,
+    pub rewatching: bool,
+    /// 1-10; null for a title they have not judged
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub score: Option<i32>,
+    pub at: String,
+}
+
 /// Every refusal on this door, in the one shape they all take.
 ///
 /// `message` is a **phrase name and never a sentence**: one room can hold five
@@ -522,11 +499,8 @@ pub struct Related {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Default)]
 pub struct ScoreBody {
+    /// 1 to 10
     pub score: i32,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub poster: Option<String>,
 }
 
 impl ScoreBody {
@@ -535,16 +509,6 @@ impl ScoreBody {
             score: score.into(),
             ..Default::default()
         }
-    }
-
-    pub fn title(mut self, value: impl Into<String>) -> Self {
-        self.title = Some(value.into());
-        self
-    }
-
-    pub fn poster(mut self, value: impl Into<String>) -> Self {
-        self.poster = Some(value.into());
-        self
     }
 }
 

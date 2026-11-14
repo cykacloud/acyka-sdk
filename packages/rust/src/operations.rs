@@ -1086,17 +1086,17 @@ impl<'a> TitleStaff<'a> {
 }
 
 ///
-/// `PUT /api/v1/collections/{code}/items/{shikimori_id}`, needs `lists:write`
+/// `PUT /api/v1/folders/{code}/items/{shikimori_id}`, needs `lists:write`
 #[derive(Debug, Clone)]
-pub struct AddCollectionItem<'a> {
+pub struct AddFolderItem<'a> {
     core: &'a Core,
     code: String,
     shikimori_id: i32,
-    body: models::EntryBody,
+    body: models::ItemBody,
 }
 
-impl<'a> AddCollectionItem<'a> {
-    pub(crate) fn new(core: &'a Core, code: &str, shikimori_id: i32, body: models::EntryBody) -> Self {
+impl<'a> AddFolderItem<'a> {
+    pub(crate) fn new(core: &'a Core, code: &str, shikimori_id: i32, body: models::ItemBody) -> Self {
         Self {
             core,
             code: code.to_owned(),
@@ -1106,45 +1106,22 @@ impl<'a> AddCollectionItem<'a> {
     }
 
     /// Send it.
-    pub async fn send(self) -> Result<models::CollectionItem> {
-        let path = format!("/api/v1/collections/{}/items/{}", urlencode(&self.code), self.shikimori_id);
-        self.core.call(Method::PUT, &path, &[], Some(&self.body)).await
+    pub async fn send(self) -> Result<()> {
+        let path = format!("/api/v1/folders/{}/items/{}", urlencode(&self.code), self.shikimori_id);
+        self.core.nothing(Method::PUT, &path, &[], Some(&self.body)).await
     }
 }
 
 ///
-/// `GET /api/v1/collections/{code}/items`, needs `lists:read`
+/// `POST /api/v1/folders`, needs `lists:write`
 #[derive(Debug, Clone)]
-pub struct CollectionItems<'a> {
+pub struct CreateFolder<'a> {
     core: &'a Core,
-    code: String,
+    body: models::FolderBody,
 }
 
-impl<'a> CollectionItems<'a> {
-    pub(crate) fn new(core: &'a Core, code: &str) -> Self {
-        Self {
-            core,
-            code: code.to_owned(),
-        }
-    }
-
-    /// Send it.
-    pub async fn send(self) -> Result<models::Page<models::CollectionItem>> {
-        let path = format!("/api/v1/collections/{}/items", urlencode(&self.code));
-        self.core.call(Method::GET, &path, &[], None::<&()>).await
-    }
-}
-
-///
-/// `POST /api/v1/collections`, needs `lists:write`
-#[derive(Debug, Clone)]
-pub struct CreateCollection<'a> {
-    core: &'a Core,
-    body: models::CollectionBody,
-}
-
-impl<'a> CreateCollection<'a> {
-    pub(crate) fn new(core: &'a Core, body: models::CollectionBody) -> Self {
+impl<'a> CreateFolder<'a> {
+    pub(crate) fn new(core: &'a Core, body: models::FolderBody) -> Self {
         Self {
             core,
             body,
@@ -1152,21 +1129,21 @@ impl<'a> CreateCollection<'a> {
     }
 
     /// Send it.
-    pub async fn send(self) -> Result<models::Collection> {
-        let path = "/api/v1/collections".to_owned();
+    pub async fn send(self) -> Result<models::Folder> {
+        let path = "/api/v1/folders".to_owned();
         self.core.call(Method::POST, &path, &[], Some(&self.body)).await
     }
 }
 
 ///
-/// `GET /api/v1/collections/{code}`, needs `lists:read`
+/// `DELETE /api/v1/folders/{code}`, needs `lists:write`
 #[derive(Debug, Clone)]
-pub struct GetCollection<'a> {
+pub struct DeleteFolder<'a> {
     core: &'a Core,
     code: String,
 }
 
-impl<'a> GetCollection<'a> {
+impl<'a> DeleteFolder<'a> {
     pub(crate) fn new(core: &'a Core, code: &str) -> Self {
         Self {
             core,
@@ -1175,135 +1152,149 @@ impl<'a> GetCollection<'a> {
     }
 
     /// Send it.
-    pub async fn send(self) -> Result<models::Collection> {
-        let path = format!("/api/v1/collections/{}", urlencode(&self.code));
+    pub async fn send(self) -> Result<()> {
+        let path = format!("/api/v1/folders/{}", urlencode(&self.code));
+        self.core.nothing(Method::DELETE, &path, &[], None::<&()>).await
+    }
+}
+
+///
+/// `PATCH /api/v1/folders/{code}`, needs `lists:write`
+#[derive(Debug, Clone)]
+pub struct EditFolder<'a> {
+    core: &'a Core,
+    code: String,
+    body: models::FolderPatch,
+}
+
+impl<'a> EditFolder<'a> {
+    pub(crate) fn new(core: &'a Core, code: &str, body: models::FolderPatch) -> Self {
+        Self {
+            core,
+            code: code.to_owned(),
+            body,
+        }
+    }
+
+    /// Send it.
+    pub async fn send(self) -> Result<models::Folder> {
+        let path = format!("/api/v1/folders/{}", urlencode(&self.code));
+        self.core.call(Method::PATCH, &path, &[], Some(&self.body)).await
+    }
+}
+
+///
+/// `GET /api/v1/folders/{code}`, needs `lists:read`
+#[derive(Debug, Clone)]
+pub struct GetFolder<'a> {
+    core: &'a Core,
+    code: String,
+}
+
+impl<'a> GetFolder<'a> {
+    pub(crate) fn new(core: &'a Core, code: &str) -> Self {
+        Self {
+            core,
+            code: code.to_owned(),
+        }
+    }
+
+    /// Send it.
+    pub async fn send(self) -> Result<models::Folder> {
+        let path = format!("/api/v1/folders/{}", urlencode(&self.code));
         self.core.call(Method::GET, &path, &[], None::<&()>).await
     }
 }
 
 ///
-/// `GET /api/v1/collections`, needs `lists:read`
+/// `GET /api/v1/progress/{shikimori_id}`, needs `lists:read`
 #[derive(Debug, Clone)]
-pub struct ListMyCollections<'a> {
+pub struct GetProgress<'a> {
     core: &'a Core,
+    shikimori_id: i32,
 }
 
-impl<'a> ListMyCollections<'a> {
-    pub(crate) fn new(core: &'a Core) -> Self {
+impl<'a> GetProgress<'a> {
+    pub(crate) fn new(core: &'a Core, shikimori_id: i32) -> Self {
         Self {
             core,
+            shikimori_id,
         }
     }
 
     /// Send it.
-    pub async fn send(self) -> Result<models::Page<models::Collection>> {
-        let path = "/api/v1/collections".to_owned();
+    pub async fn send(self) -> Result<models::Progress> {
+        let path = format!("/api/v1/progress/{}", self.shikimori_id);
         self.core.call(Method::GET, &path, &[], None::<&()>).await
     }
 }
 
-/// It used to answer the whole thing, which is the bug this api's own rules
-/// already name: a caller with four hundred titles got four hundred rows and a
-/// caller with four thousand got four thousand, and the only reason nobody was
-/// hurt by it is that nobody was using this door. `total` is beside the items
-/// because the paging is by offset, which is exactly when a caller has to know
-/// how far the list goes.
 ///
-/// `GET /api/v1/lists`, needs `lists:read`
+/// `GET /api/v1/folders/{code}/items`, needs `lists:read`
 #[derive(Debug, Clone)]
-pub struct ListMyList<'a> {
+pub struct ListFolderItems<'a> {
     core: &'a Core,
-    status: Option<String>,
-    limit: Option<i64>,
-    offset: Option<i64>,
+    code: String,
+    q: Option<String>,
 }
 
-impl<'a> ListMyList<'a> {
-    pub(crate) fn new(core: &'a Core) -> Self {
+impl<'a> ListFolderItems<'a> {
+    pub(crate) fn new(core: &'a Core, code: &str) -> Self {
         Self {
             core,
-            status: None,
-            limit: None,
-            offset: None,
+            code: code.to_owned(),
+            q: None,
         }
     }
 
-    /// narrow to one shelf: `planned` | `watching` | `rewatching` | `paused` |
-    /// `done` | `dropped`
-    pub fn status(mut self, value: impl Into<String>) -> Self {
-        self.status = Some(value.into());
-        self
-    }
-
-    /// how many rows, 1-100; 30 by default
-    pub fn limit(mut self, value: impl Into<i64>) -> Self {
-        self.limit = Some(value.into());
-        self
-    }
-
-    /// where to carry on from
-    pub fn offset(mut self, value: impl Into<i64>) -> Self {
-        self.offset = Some(value.into());
+    /// only titles whose name holds this
+    pub fn q(mut self, value: impl Into<String>) -> Self {
+        self.q = Some(value.into());
         self
     }
 
     /// Send it.
-    pub async fn send(self) -> Result<models::Page<models::ListEntry>> {
-        let path = "/api/v1/lists".to_owned();
+    pub async fn send(self) -> Result<models::Page<models::FolderItem>> {
+        let path = format!("/api/v1/folders/{}/items", urlencode(&self.code));
         let mut query: Vec<(&str, String)> = Vec::new();
-        if let Some(value) = &self.status {
-            query.push(("status", value.to_string()));
-        }
-        if let Some(value) = &self.limit {
-            query.push(("limit", value.to_string()));
-        }
-        if let Some(value) = &self.offset {
-            query.push(("offset", value.to_string()));
+        if let Some(value) = &self.q {
+            query.push(("q", value.to_string()));
         }
         self.core.call(Method::GET, &path, &query, None::<&()>).await
     }
+}
 
-    /// Every row, a page at a time.
-    ///
-    /// Stops when a page comes back shorter than it asked for rather than
-    /// when `total` is reached: the list can grow while it is being read, and
-    /// counting against a number from the first page walks off the end.
-    pub fn stream(self) -> impl futures_core::Stream<Item = Result<models::ListEntry>> + Unpin + 'a {
-        let window = self.limit.unwrap_or(100);
-        let start = self.offset.unwrap_or(0);
-        Box::pin(
-        futures_util::stream::try_unfold(
-            (self, start, false),
-            move |(ask, at, done)| async move {
-                if done {
-                    return Ok(None);
-                }
-                let page = ask.clone().limit(window).offset(at).send().await?;
-                let got = page.items.len() as i64;
-                let last = got < window;
-                Ok(Some((page.items, (ask, at + got, last))))
-            },
-        )
-        .map_ok(|rows| futures_util::stream::iter(rows.into_iter().map(Ok)))
-        .try_flatten(),
-        )
+///
+/// `GET /api/v1/folders`, needs `lists:read`
+#[derive(Debug, Clone)]
+pub struct ListMyFolders<'a> {
+    core: &'a Core,
+}
+
+impl<'a> ListMyFolders<'a> {
+    pub(crate) fn new(core: &'a Core) -> Self {
+        Self {
+            core,
+        }
+    }
+
+    /// Send it.
+    pub async fn send(self) -> Result<models::Page<models::Folder>> {
+        let path = "/api/v1/folders".to_owned();
+        self.core.call(Method::GET, &path, &[], None::<&()>).await
     }
 }
 
-/// The same `plans::domain::rate` the site calls, so the two doors cannot come
-/// to disagree about what a score is — which is the whole reason the domain
-/// exists. What differs is what this surface always differs by: 404 where the
-/// site answers 204 for a delete that removed nothing.
 ///
-/// `PUT /api/v1/lists/{shikimori_id}/score`, needs `lists:write`
+/// `PUT /api/v1/progress/{shikimori_id}/score`, needs `lists:write`
 #[derive(Debug, Clone)]
-pub struct RateListEntry<'a> {
+pub struct RateTitle<'a> {
     core: &'a Core,
     shikimori_id: i32,
     body: models::ScoreBody,
 }
 
-impl<'a> RateListEntry<'a> {
+impl<'a> RateTitle<'a> {
     pub(crate) fn new(core: &'a Core, shikimori_id: i32, body: models::ScoreBody) -> Self {
         Self {
             core,
@@ -1313,22 +1304,22 @@ impl<'a> RateListEntry<'a> {
     }
 
     /// Send it.
-    pub async fn send(self) -> Result<models::ListEntry> {
-        let path = format!("/api/v1/lists/{}/score", self.shikimori_id);
+    pub async fn send(self) -> Result<models::Progress> {
+        let path = format!("/api/v1/progress/{}/score", self.shikimori_id);
         self.core.call(Method::PUT, &path, &[], Some(&self.body)).await
     }
 }
 
 ///
-/// `DELETE /api/v1/collections/{code}/items/{shikimori_id}`, needs `lists:write`
+/// `DELETE /api/v1/folders/{code}/items/{shikimori_id}`, needs `lists:write`
 #[derive(Debug, Clone)]
-pub struct RemoveCollectionItem<'a> {
+pub struct RemoveFolderItem<'a> {
     core: &'a Core,
     code: String,
     shikimori_id: i32,
 }
 
-impl<'a> RemoveCollectionItem<'a> {
+impl<'a> RemoveFolderItem<'a> {
     pub(crate) fn new(core: &'a Core, code: &str, shikimori_id: i32) -> Self {
         Self {
             core,
@@ -1339,45 +1330,22 @@ impl<'a> RemoveCollectionItem<'a> {
 
     /// Send it.
     pub async fn send(self) -> Result<()> {
-        let path = format!("/api/v1/collections/{}/items/{}", urlencode(&self.code), self.shikimori_id);
+        let path = format!("/api/v1/folders/{}/items/{}", urlencode(&self.code), self.shikimori_id);
         self.core.nothing(Method::DELETE, &path, &[], None::<&()>).await
     }
 }
 
 ///
-/// `DELETE /api/v1/lists/{shikimori_id}`, needs `lists:write`
+/// `PUT /api/v1/progress/{shikimori_id}`, needs `lists:write`
 #[derive(Debug, Clone)]
-pub struct RemoveListEntry<'a> {
+pub struct SetProgress<'a> {
     core: &'a Core,
     shikimori_id: i32,
+    body: models::EpisodeBody,
 }
 
-impl<'a> RemoveListEntry<'a> {
-    pub(crate) fn new(core: &'a Core, shikimori_id: i32) -> Self {
-        Self {
-            core,
-            shikimori_id,
-        }
-    }
-
-    /// Send it.
-    pub async fn send(self) -> Result<()> {
-        let path = format!("/api/v1/lists/{}", self.shikimori_id);
-        self.core.nothing(Method::DELETE, &path, &[], None::<&()>).await
-    }
-}
-
-///
-/// `PUT /api/v1/lists/{shikimori_id}`, needs `lists:write`
-#[derive(Debug, Clone)]
-pub struct SaveListEntry<'a> {
-    core: &'a Core,
-    shikimori_id: i32,
-    body: models::ListBody,
-}
-
-impl<'a> SaveListEntry<'a> {
-    pub(crate) fn new(core: &'a Core, shikimori_id: i32, body: models::ListBody) -> Self {
+impl<'a> SetProgress<'a> {
+    pub(crate) fn new(core: &'a Core, shikimori_id: i32, body: models::EpisodeBody) -> Self {
         Self {
             core,
             shikimori_id,
@@ -1386,21 +1354,21 @@ impl<'a> SaveListEntry<'a> {
     }
 
     /// Send it.
-    pub async fn send(self) -> Result<models::ListEntry> {
-        let path = format!("/api/v1/lists/{}", self.shikimori_id);
+    pub async fn send(self) -> Result<models::Progress> {
+        let path = format!("/api/v1/progress/{}", self.shikimori_id);
         self.core.call(Method::PUT, &path, &[], Some(&self.body)).await
     }
 }
 
 ///
-/// `DELETE /api/v1/lists/{shikimori_id}/score`, needs `lists:write`
+/// `DELETE /api/v1/progress/{shikimori_id}/score`, needs `lists:write`
 #[derive(Debug, Clone)]
-pub struct UnrateListEntry<'a> {
+pub struct UnrateTitle<'a> {
     core: &'a Core,
     shikimori_id: i32,
 }
 
-impl<'a> UnrateListEntry<'a> {
+impl<'a> UnrateTitle<'a> {
     pub(crate) fn new(core: &'a Core, shikimori_id: i32) -> Self {
         Self {
             core,
@@ -1410,7 +1378,7 @@ impl<'a> UnrateListEntry<'a> {
 
     /// Send it.
     pub async fn send(self) -> Result<()> {
-        let path = format!("/api/v1/lists/{}/score", self.shikimori_id);
+        let path = format!("/api/v1/progress/{}/score", self.shikimori_id);
         self.core.nothing(Method::DELETE, &path, &[], None::<&()>).await
     }
 }
@@ -1483,15 +1451,16 @@ impl<'a> SearchUsers<'a> {
     }
 }
 
+/// Somebody's public folders, behind the audience they chose for folders.
 ///
-/// `GET /api/v1/users/{nick}/collections`, needs `people:read`
+/// `GET /api/v1/users/{nick}/folders`, needs `people:read`
 #[derive(Debug, Clone)]
-pub struct UserCollections<'a> {
+pub struct UserFolders<'a> {
     core: &'a Core,
     nick: String,
 }
 
-impl<'a> UserCollections<'a> {
+impl<'a> UserFolders<'a> {
     pub(crate) fn new(core: &'a Core, nick: &str) -> Self {
         Self {
             core,
@@ -1500,8 +1469,8 @@ impl<'a> UserCollections<'a> {
     }
 
     /// Send it.
-    pub async fn send(self) -> Result<models::Page<models::Collection>> {
-        let path = format!("/api/v1/users/{}/collections", urlencode(&self.nick));
+    pub async fn send(self) -> Result<models::Page<models::Folder>> {
+        let path = format!("/api/v1/users/{}/folders", urlencode(&self.nick));
         self.core.call(Method::GET, &path, &[], None::<&()>).await
     }
 }
@@ -1629,91 +1598,6 @@ impl<'a> UserFollowing<'a> {
     /// when `total` is reached: the list can grow while it is being read, and
     /// counting against a number from the first page walks off the end.
     pub fn stream(self) -> impl futures_core::Stream<Item = Result<models::Person>> + Unpin + 'a {
-        let window = self.limit.unwrap_or(100);
-        let start = self.offset.unwrap_or(0);
-        Box::pin(
-        futures_util::stream::try_unfold(
-            (self, start, false),
-            move |(ask, at, done)| async move {
-                if done {
-                    return Ok(None);
-                }
-                let page = ask.clone().limit(window).offset(at).send().await?;
-                let got = page.items.len() as i64;
-                let last = got < window;
-                Ok(Some((page.items, (ask, at + got, last))))
-            },
-        )
-        .map_ok(|rows| futures_util::stream::iter(rows.into_iter().map(Ok)))
-        .try_flatten(),
-        )
-    }
-}
-
-/// What somebody is watching, if their list is anybody's business.
-///
-/// `GET /api/v1/users/{nick}/lists`, needs `people:read`
-#[derive(Debug, Clone)]
-pub struct UserLists<'a> {
-    core: &'a Core,
-    nick: String,
-    status: Option<String>,
-    limit: Option<i64>,
-    offset: Option<i64>,
-}
-
-impl<'a> UserLists<'a> {
-    pub(crate) fn new(core: &'a Core, nick: &str) -> Self {
-        Self {
-            core,
-            nick: nick.to_owned(),
-            status: None,
-            limit: None,
-            offset: None,
-        }
-    }
-
-    /// narrow to one shelf: `planned` | `watching` | `rewatching` | `paused` |
-    /// `done` | `dropped`
-    pub fn status(mut self, value: impl Into<String>) -> Self {
-        self.status = Some(value.into());
-        self
-    }
-
-    /// how many rows, 1-100; 30 by default
-    pub fn limit(mut self, value: impl Into<i64>) -> Self {
-        self.limit = Some(value.into());
-        self
-    }
-
-    /// where to carry on from
-    pub fn offset(mut self, value: impl Into<i64>) -> Self {
-        self.offset = Some(value.into());
-        self
-    }
-
-    /// Send it.
-    pub async fn send(self) -> Result<models::Page<models::ListEntry>> {
-        let path = format!("/api/v1/users/{}/lists", urlencode(&self.nick));
-        let mut query: Vec<(&str, String)> = Vec::new();
-        if let Some(value) = &self.status {
-            query.push(("status", value.to_string()));
-        }
-        if let Some(value) = &self.limit {
-            query.push(("limit", value.to_string()));
-        }
-        if let Some(value) = &self.offset {
-            query.push(("offset", value.to_string()));
-        }
-        self.core.call(Method::GET, &path, &query, None::<&()>).await
-    }
-
-    /// Every row, a page at a time.
-    ///
-    /// Stops when a page comes back shorter than it asked for rather than
-    /// when `total` is reached: the list can grow while it is being read, and
-    /// counting against a number from the first page walks off the end.
-    pub fn stream(self) -> impl futures_core::Stream<Item = Result<models::ListEntry>> + Unpin + 'a {
         let window = self.limit.unwrap_or(100);
         let start = self.offset.unwrap_or(0);
         Box::pin(
@@ -2097,8 +1981,9 @@ impl<'a> People<'a> {
         SearchUsers::new(self.core)
     }
 
-    pub fn user_collections(&self, nick: &str) -> UserCollections<'a> {
-        UserCollections::new(self.core, nick)
+    /// Somebody's public folders, behind the audience they chose for folders.
+    pub fn user_folders(&self, nick: &str) -> UserFolders<'a> {
+        UserFolders::new(self.core, nick)
     }
 
     pub fn user_followers(&self, nick: &str) -> UserFollowers<'a> {
@@ -2109,17 +1994,12 @@ impl<'a> People<'a> {
         UserFollowing::new(self.core, nick)
     }
 
-    /// What somebody is watching, if their list is anybody's business.
-    pub fn user_lists(&self, nick: &str) -> UserLists<'a> {
-        UserLists::new(self.core, nick)
-    }
-
     pub fn user_stats(&self, nick: &str) -> UserStats<'a> {
         UserStats::new(self.core, nick)
     }
 }
 
-/// somebody's own list and shelves
+/// somebody's own folders and how far through each title they are
 #[derive(Debug, Clone)]
 pub struct Library<'a> {
     pub(crate) core: &'a Core,
@@ -2127,50 +2007,52 @@ pub struct Library<'a> {
 
 impl<'a> Library<'a> {
 
-    pub fn add_collection_item(&self, code: &str, shikimori_id: i32, body: models::EntryBody) -> AddCollectionItem<'a> {
-        AddCollectionItem::new(self.core, code, shikimori_id, body)
+    pub fn add_folder_item(&self, code: &str, shikimori_id: i32, body: models::ItemBody) -> AddFolderItem<'a> {
+        AddFolderItem::new(self.core, code, shikimori_id, body)
     }
 
-    pub fn collection_items(&self, code: &str) -> CollectionItems<'a> {
-        CollectionItems::new(self.core, code)
+    pub fn create_folder(&self, body: models::FolderBody) -> CreateFolder<'a> {
+        CreateFolder::new(self.core, body)
     }
 
-    pub fn create_collection(&self, body: models::CollectionBody) -> CreateCollection<'a> {
-        CreateCollection::new(self.core, body)
+    pub fn delete_folder(&self, code: &str) -> DeleteFolder<'a> {
+        DeleteFolder::new(self.core, code)
     }
 
-    pub fn get_collection(&self, code: &str) -> GetCollection<'a> {
-        GetCollection::new(self.core, code)
+    pub fn edit_folder(&self, code: &str, body: models::FolderPatch) -> EditFolder<'a> {
+        EditFolder::new(self.core, code, body)
     }
 
-    pub fn list_my_collections(&self) -> ListMyCollections<'a> {
-        ListMyCollections::new(self.core)
+    pub fn get_folder(&self, code: &str) -> GetFolder<'a> {
+        GetFolder::new(self.core, code)
     }
 
-    /// The list, a page at a time.
-    pub fn list_my_list(&self) -> ListMyList<'a> {
-        ListMyList::new(self.core)
+    pub fn get_progress(&self, shikimori_id: i32) -> GetProgress<'a> {
+        GetProgress::new(self.core, shikimori_id)
     }
 
-    /// What somebody thought of a title, through a token.
-    pub fn rate_list_entry(&self, shikimori_id: i32, body: models::ScoreBody) -> RateListEntry<'a> {
-        RateListEntry::new(self.core, shikimori_id, body)
+    pub fn list_folder_items(&self, code: &str) -> ListFolderItems<'a> {
+        ListFolderItems::new(self.core, code)
     }
 
-    pub fn remove_collection_item(&self, code: &str, shikimori_id: i32) -> RemoveCollectionItem<'a> {
-        RemoveCollectionItem::new(self.core, code, shikimori_id)
+    pub fn list_my_folders(&self) -> ListMyFolders<'a> {
+        ListMyFolders::new(self.core)
     }
 
-    pub fn remove_list_entry(&self, shikimori_id: i32) -> RemoveListEntry<'a> {
-        RemoveListEntry::new(self.core, shikimori_id)
+    pub fn rate_title(&self, shikimori_id: i32, body: models::ScoreBody) -> RateTitle<'a> {
+        RateTitle::new(self.core, shikimori_id, body)
     }
 
-    pub fn save_list_entry(&self, shikimori_id: i32, body: models::ListBody) -> SaveListEntry<'a> {
-        SaveListEntry::new(self.core, shikimori_id, body)
+    pub fn remove_folder_item(&self, code: &str, shikimori_id: i32) -> RemoveFolderItem<'a> {
+        RemoveFolderItem::new(self.core, code, shikimori_id)
     }
 
-    pub fn unrate_list_entry(&self, shikimori_id: i32) -> UnrateListEntry<'a> {
-        UnrateListEntry::new(self.core, shikimori_id)
+    pub fn set_progress(&self, shikimori_id: i32, body: models::EpisodeBody) -> SetProgress<'a> {
+        SetProgress::new(self.core, shikimori_id, body)
+    }
+
+    pub fn unrate_title(&self, shikimori_id: i32) -> UnrateTitle<'a> {
+        UnrateTitle::new(self.core, shikimori_id)
     }
 }
 

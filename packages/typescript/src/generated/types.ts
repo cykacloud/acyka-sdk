@@ -76,51 +76,6 @@ export type CharacterCard = {
 };
 
 /**
- * A shelf somebody named.
- */
-export type Collection = {
-	code: string;
-	name: string;
-	about: string;
-	icon: string;
-	hue?: number;
-	/** `public` | `unlisted` | `private` */
-	visibility: string;
-	/** whether anyone who can read it may also add to it */
-	shared: boolean;
-	count: number;
-	saves: number;
-	owner: string;
-	owner_avatar?: string;
-	owner_verified: boolean;
-	covers: string[];
-	at: string;
-	edited: string;
-};
-
-export type CollectionBody = {
-	name: string;
-	about?: string;
-	icon?: string;
-	hue?: number;
-	visibility?: string;
-	shared?: boolean;
-};
-
-export type CollectionItem = {
-	shikimori_id: number;
-	title: string;
-	poster?: string;
-	added_by?: string;
-	at: string;
-};
-
-export type EntryBody = {
-	title: string;
-	poster?: string;
-};
-
-/**
  * The preview frames one episode has.
  */
 export type Episode = {
@@ -128,34 +83,69 @@ export type Episode = {
 	shots: string[];
 };
 
-export type ListBody = {
-	title: string;
-	poster?: string;
-	status?: string;
-	episode?: number;
+export type EpisodeBody = {
+	episode: number;
+	rewatching?: boolean;
 };
 
 /**
- * One row of somebody's list.
+ * A folder: a status somebody keeps titles under, or a shelf they named.
  *
- * One shape for a caller's own list and for somebody else's, because it is one
- * thing. Two shapes differing by a field would be two unwrappers in every SDK
- * for a row that means exactly the same in both places.
+ * The five status categories are exclusive — a title sits in at most one of an
+ * account's `watching`, `planned`, `done`, `paused` and `dropped` folders —
+ * and `other` folders hold whatever they like.
  */
-export type ListEntry = {
+export type Folder = {
+	code: string;
+	/** null: the category's own name, in whatever language the reader uses */
+	name?: string;
+	/** `watching` | `planned` | `done` | `paused` | `dropped` | `other` */
+	category: string;
+	/** `#RRGGBB` */
+	color: string;
+	about: string;
+	cover?: string;
+	public: boolean;
+	count: number;
+	/** the account it belongs to, by its current name */
+	owner: string;
+	/** the three newest posters in it */
+	posters: string[];
+	at: string;
+	edited: string;
+};
+
+export type FolderBody = {
+	/** leave out for the category's own name */
+	name?: string;
+	/** `#rrggbb`; leave out for the category's colour */
+	color?: string;
+	/** `watching` | `planned` | `done` | `paused` | `dropped` | `other` */
+	category: string;
+};
+
+export type FolderItem = {
 	shikimori_id: number;
 	title: string;
 	poster?: string;
-	/** `planned` | `watching` | `rewatching` | `paused` | `done` | `dropped` */
-	status: string;
-	/** how many they have watched */
-	episode: number;
-	/** How many the catalogue holds, so a counter knows where the series stops. Absent where the catalogue does not carry it or does not know — an announcement, and a good half of what is airing — and absent means "no ceiling" rather than "none". */
-	episodes?: number;
-	/** what they thought of it; null for a title they have not judged */
-	score?: number;
-	/** RFC 3339, and a string rather than a timestamp type for a reason that is about having one shape: this row comes from two places, and the site's own reader already formats it. A parse on this side to fit a stricter type would need something to do when it failed, and every honest answer to that is a lie about when somebody watched something. */
+	/** what its authors wrote beside it */
+	note: string;
+	/** the group it sits in, if the folder has any */
+	group_id?: number;
+	position: number;
 	at: string;
+};
+
+export type FolderPatch = {
+	/** `""` gives the folder its category's name back */
+	name?: string;
+	about?: string;
+	color?: string;
+	public?: boolean;
+};
+
+export type ItemBody = {
+	note?: string;
 };
 
 /**
@@ -273,6 +263,23 @@ export type Profile = {
 };
 
 /**
+ * How far through a title somebody is. It belongs to the title, not to a
+ * folder: taking a title out of every folder keeps it.
+ */
+export type Progress = {
+	shikimori_id: number;
+	/** the status folder it is in, if any: `watching` | `planned` | `done` | `paused` | `dropped` */
+	status?: string;
+	episode: number;
+	/** absent where the catalogue does not know, which is "no ceiling", not "none" */
+	episodes?: number;
+	rewatching: boolean;
+	/** 1-10; null for a title they have not judged */
+	score?: number;
+	at: string;
+};
+
+/**
  * Every refusal on this door, in the one shape they all take.
  *
  * `message` is a **phrase name and never a sentence**: one room can hold five
@@ -307,9 +314,8 @@ export type Related = {
 };
 
 export type ScoreBody = {
+	/** 1 to 10 */
 	score: number;
-	title?: string;
-	poster?: string;
 };
 
 /**

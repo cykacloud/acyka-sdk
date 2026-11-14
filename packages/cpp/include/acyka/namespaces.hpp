@@ -40,7 +40,7 @@ class namespaces {
     catalogue_api catalogue;
     /// other people, as far as they have agreed to be read
     people_api people;
-    /// somebody's own list and shelves
+    /// somebody's own folders and how far through each title they are
     library_api library;
     /// their writing, and who they read
     social_api social;

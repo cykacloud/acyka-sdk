@@ -6,13 +6,13 @@ import type {
 	Appearance,
 	Character,
 	CharacterCard,
-	Collection,
-	CollectionBody,
-	CollectionItem,
-	EntryBody,
 	Episode,
-	ListBody,
-	ListEntry,
+	EpisodeBody,
+	Folder,
+	FolderBody,
+	FolderItem,
+	FolderPatch,
+	ItemBody,
 	Me,
 	Page,
 	Person,
@@ -21,6 +21,7 @@ import type {
 	Post,
 	PostBody,
 	Profile,
+	Progress,
 	Related,
 	ScoreBody,
 	Stats,
@@ -687,17 +688,18 @@ export class People {
 	}
 
 	/**
+	 * Somebody's public folders, behind the audience they chose for folders.
 	 *
-	 * `GET /api/v1/users/{nick}/collections`
+	 * `GET /api/v1/users/{nick}/folders`
 	 * @scope `people:read`
 	 */
-	userCollections(input: {
+	userFolders(input: {
 		/** a nickname the account answers to, current or past */
 		nick: string;
-	}): Promise<Page<Collection>> {
+	}): Promise<Page<Folder>> {
 		return this.core.call({
 			method: 'GET',
-			path: `/api/v1/users/${encodeURIComponent(String(input.nick))}/collections`,
+			path: `/api/v1/users/${encodeURIComponent(String(input.nick))}/folders`,
 			scope: 'people:read',
 		});
 	}
@@ -795,57 +797,6 @@ export class People {
 	}
 
 	/**
-	 * What somebody is watching, if their list is anybody's business.
-	 *
-	 * `GET /api/v1/users/{nick}/lists`
-	 * @scope `people:read`
-	 */
-	userLists(input: {
-		/** a nickname the account answers to, current or past */
-		nick: string;
-		/** narrow to one shelf: `planned` | `watching` | `rewatching` | `paused` | `done` | `dropped` */
-		status?: string;
-		/** how many rows, 1-100; 30 by default */
-		limit?: number;
-		/** where to carry on from */
-		offset?: number;
-	}): Promise<Page<ListEntry>> {
-		return this.core.call({
-			method: 'GET',
-			path: `/api/v1/users/${encodeURIComponent(String(input.nick))}/lists`,
-			query: pick(input, ['status', 'limit', 'offset']),
-			scope: 'people:read',
-		});
-	}
-
-	/**
-	 * Every row of `userLists`, a page at a time.
-	 *
-	 * Stops when a page comes back shorter than it asked for rather than
-	 * when `total` is reached: the list can grow while it is being read, and
-	 * counting against a number from the first page walks off the end.
-	 */
-	async *userListsAll(input: {
-		/** a nickname the account answers to, current or past */
-		nick: string;
-		/** narrow to one shelf: `planned` | `watching` | `rewatching` | `paused` | `done` | `dropped` */
-		status?: string;
-		/** how many rows, 1-100; 30 by default */
-		limit?: number;
-		/** where to carry on from */
-		offset?: number;
-	}): AsyncGenerator<ListEntry> {
-		let offset = input?.offset ?? 0;
-		const limit = input?.limit ?? 100;
-		for (;;) {
-			const page = await this.userLists({ ...(input as object), limit, offset } as never);
-			for (const row of page.items) yield row;
-			if (page.items.length < limit) return;
-			offset += page.items.length;
-		}
-	}
-
-	/**
 	 *
 	 * `GET /api/v1/users/{nick}/stats`
 	 * @scope `people:read`
@@ -863,60 +814,45 @@ export class People {
 }
 
 /**
- * somebody's own list and shelves
+ * somebody's own folders and how far through each title they are
  */
 export class Library {
 	constructor(private readonly core: Core) {}
 
 	/**
 	 *
-	 * `PUT /api/v1/collections/{code}/items/{shikimori_id}`
+	 * `PUT /api/v1/folders/{code}/items/{shikimori_id}`
 	 * @scope `lists:write`
 	 */
-	addCollectionItem(input: {
-		/** the shelf's code */
+	addFolderItem(input: {
+		/** the folder's code */
 		code: string;
 		/** the shikimori id */
 		shikimori_id: number;
 		/** the request body */
-		body: EntryBody;
-	}): Promise<CollectionItem> {
+		body: ItemBody;
+	}): Promise<void> {
 		return this.core.call({
 			method: 'PUT',
-			path: `/api/v1/collections/${encodeURIComponent(String(input.code))}/items/${encodeURIComponent(String(input.shikimori_id))}`,
+			path: `/api/v1/folders/${encodeURIComponent(String(input.code))}/items/${encodeURIComponent(String(input.shikimori_id))}`,
 			body: input.body,
+			empty: true,
 			scope: 'lists:write',
 		});
 	}
 
 	/**
 	 *
-	 * `GET /api/v1/collections/{code}/items`
-	 * @scope `lists:read`
-	 */
-	collectionItems(input: {
-		/** the shelf's code */
-		code: string;
-	}): Promise<Page<CollectionItem>> {
-		return this.core.call({
-			method: 'GET',
-			path: `/api/v1/collections/${encodeURIComponent(String(input.code))}/items`,
-			scope: 'lists:read',
-		});
-	}
-
-	/**
-	 *
-	 * `POST /api/v1/collections`
+	 * `POST /api/v1/folders`
 	 * @scope `lists:write`
 	 */
-	createCollection(input: {
+	createFolder(input: {
 		/** the request body */
-		body: CollectionBody;
-	}): Promise<Collection> {
+		body: FolderBody;
+	}): Promise<Folder> {
 		return this.core.call({
 			method: 'POST',
-			path: `/api/v1/collections`,
+			path: `/api/v1/folders`,
 			body: input.body,
 			scope: 'lists:write',
 		});
@@ -924,103 +860,118 @@ export class Library {
 
 	/**
 	 *
-	 * `GET /api/v1/collections/{code}`
-	 * @scope `lists:read`
-	 */
-	getCollection(input: {
-		/** the shelf's code */
-		code: string;
-	}): Promise<Collection> {
-		return this.core.call({
-			method: 'GET',
-			path: `/api/v1/collections/${encodeURIComponent(String(input.code))}`,
-			scope: 'lists:read',
-		});
-	}
-
-	/**
-	 *
-	 * `GET /api/v1/collections`
-	 * @scope `lists:read`
-	 */
-	listMyCollections(): Promise<Page<Collection>> {
-		return this.core.call({
-			method: 'GET',
-			path: `/api/v1/collections`,
-			scope: 'lists:read',
-		});
-	}
-
-	/**
-	 * It used to answer the whole thing, which is the bug this api's own rules
-	 * already name: a caller with four hundred titles got four hundred rows and a
-	 * caller with four thousand got four thousand, and the only reason nobody was
-	 * hurt by it is that nobody was using this door. `total` is beside the items
-	 * because the paging is by offset, which is exactly when a caller has to know
-	 * how far the list goes.
-	 *
-	 * `GET /api/v1/lists`
-	 * @scope `lists:read`
-	 */
-	listMyList(input?: {
-		/** narrow to one shelf: `planned` | `watching` | `rewatching` | `paused` | `done` | `dropped` */
-		status?: string;
-		/** how many rows, 1-100; 30 by default */
-		limit?: number;
-		/** where to carry on from */
-		offset?: number;
-	}): Promise<Page<ListEntry>> {
-		return this.core.call({
-			method: 'GET',
-			path: `/api/v1/lists`,
-			query: pick(input, ['status', 'limit', 'offset']),
-			scope: 'lists:read',
-		});
-	}
-
-	/**
-	 * Every row of `listMyList`, a page at a time.
-	 *
-	 * Stops when a page comes back shorter than it asked for rather than
-	 * when `total` is reached: the list can grow while it is being read, and
-	 * counting against a number from the first page walks off the end.
-	 */
-	async *listMyListAll(input?: {
-		/** narrow to one shelf: `planned` | `watching` | `rewatching` | `paused` | `done` | `dropped` */
-		status?: string;
-		/** how many rows, 1-100; 30 by default */
-		limit?: number;
-		/** where to carry on from */
-		offset?: number;
-	}): AsyncGenerator<ListEntry> {
-		let offset = input?.offset ?? 0;
-		const limit = input?.limit ?? 100;
-		for (;;) {
-			const page = await this.listMyList({ ...(input as object), limit, offset } as never);
-			for (const row of page.items) yield row;
-			if (page.items.length < limit) return;
-			offset += page.items.length;
-		}
-	}
-
-	/**
-	 * The same `plans::domain::rate` the site calls, so the two doors cannot come
-	 * to disagree about what a score is — which is the whole reason the domain
-	 * exists. What differs is what this surface always differs by: 404 where the
-	 * site answers 204 for a delete that removed nothing.
-	 *
-	 * `PUT /api/v1/lists/{shikimori_id}/score`
+	 * `DELETE /api/v1/folders/{code}`
 	 * @scope `lists:write`
 	 */
-	rateListEntry(input: {
+	deleteFolder(input: {
+		/** the folder's code */
+		code: string;
+	}): Promise<void> {
+		return this.core.call({
+			method: 'DELETE',
+			path: `/api/v1/folders/${encodeURIComponent(String(input.code))}`,
+			empty: true,
+			scope: 'lists:write',
+		});
+	}
+
+	/**
+	 *
+	 * `PATCH /api/v1/folders/{code}`
+	 * @scope `lists:write`
+	 */
+	editFolder(input: {
+		/** the folder's code */
+		code: string;
+		/** the request body */
+		body: FolderPatch;
+	}): Promise<Folder> {
+		return this.core.call({
+			method: 'PATCH',
+			path: `/api/v1/folders/${encodeURIComponent(String(input.code))}`,
+			body: input.body,
+			scope: 'lists:write',
+		});
+	}
+
+	/**
+	 *
+	 * `GET /api/v1/folders/{code}`
+	 * @scope `lists:read`
+	 */
+	getFolder(input: {
+		/** the folder's code */
+		code: string;
+	}): Promise<Folder> {
+		return this.core.call({
+			method: 'GET',
+			path: `/api/v1/folders/${encodeURIComponent(String(input.code))}`,
+			scope: 'lists:read',
+		});
+	}
+
+	/**
+	 *
+	 * `GET /api/v1/progress/{shikimori_id}`
+	 * @scope `lists:read`
+	 */
+	getProgress(input: {
+		/** the shikimori id */
+		shikimori_id: number;
+	}): Promise<Progress> {
+		return this.core.call({
+			method: 'GET',
+			path: `/api/v1/progress/${encodeURIComponent(String(input.shikimori_id))}`,
+			scope: 'lists:read',
+		});
+	}
+
+	/**
+	 *
+	 * `GET /api/v1/folders/{code}/items`
+	 * @scope `lists:read`
+	 */
+	listFolderItems(input: {
+		/** the folder's code */
+		code: string;
+		/** only titles whose name holds this */
+		q?: string;
+	}): Promise<Page<FolderItem>> {
+		return this.core.call({
+			method: 'GET',
+			path: `/api/v1/folders/${encodeURIComponent(String(input.code))}/items`,
+			query: pick(input, ['q']),
+			scope: 'lists:read',
+		});
+	}
+
+	/**
+	 *
+	 * `GET /api/v1/folders`
+	 * @scope `lists:read`
+	 */
+	listMyFolders(): Promise<Page<Folder>> {
+		return this.core.call({
+			method: 'GET',
+			path: `/api/v1/folders`,
+			scope: 'lists:read',
+		});
+	}
+
+	/**
+	 *
+	 * `PUT /api/v1/progress/{shikimori_id}/score`
+	 * @scope `lists:write`
+	 */
+	rateTitle(input: {
 		/** the shikimori id */
 		shikimori_id: number;
 		/** the request body */
 		body: ScoreBody;
-	}): Promise<ListEntry> {
+	}): Promise<Progress> {
 		return this.core.call({
 			method: 'PUT',
-			path: `/api/v1/lists/${encodeURIComponent(String(input.shikimori_id))}/score`,
+			path: `/api/v1/progress/${encodeURIComponent(String(input.shikimori_id))}/score`,
 			body: input.body,
 			scope: 'lists:write',
 		});
@@ -1028,18 +979,18 @@ export class Library {
 
 	/**
 	 *
-	 * `DELETE /api/v1/collections/{code}/items/{shikimori_id}`
+	 * `DELETE /api/v1/folders/{code}/items/{shikimori_id}`
 	 * @scope `lists:write`
 	 */
-	removeCollectionItem(input: {
-		/** the shelf's code */
+	removeFolderItem(input: {
+		/** the folder's code */
 		code: string;
 		/** the shikimori id */
 		shikimori_id: number;
 	}): Promise<void> {
 		return this.core.call({
 			method: 'DELETE',
-			path: `/api/v1/collections/${encodeURIComponent(String(input.code))}/items/${encodeURIComponent(String(input.shikimori_id))}`,
+			path: `/api/v1/folders/${encodeURIComponent(String(input.code))}/items/${encodeURIComponent(String(input.shikimori_id))}`,
 			empty: true,
 			scope: 'lists:write',
 		});
@@ -1047,35 +998,18 @@ export class Library {
 
 	/**
 	 *
-	 * `DELETE /api/v1/lists/{shikimori_id}`
+	 * `PUT /api/v1/progress/{shikimori_id}`
 	 * @scope `lists:write`
 	 */
-	removeListEntry(input: {
-		/** the shikimori id */
-		shikimori_id: number;
-	}): Promise<void> {
-		return this.core.call({
-			method: 'DELETE',
-			path: `/api/v1/lists/${encodeURIComponent(String(input.shikimori_id))}`,
-			empty: true,
-			scope: 'lists:write',
-		});
-	}
-
-	/**
-	 *
-	 * `PUT /api/v1/lists/{shikimori_id}`
-	 * @scope `lists:write`
-	 */
-	saveListEntry(input: {
+	setProgress(input: {
 		/** the shikimori id */
 		shikimori_id: number;
 		/** the request body */
-		body: ListBody;
-	}): Promise<ListEntry> {
+		body: EpisodeBody;
+	}): Promise<Progress> {
 		return this.core.call({
 			method: 'PUT',
-			path: `/api/v1/lists/${encodeURIComponent(String(input.shikimori_id))}`,
+			path: `/api/v1/progress/${encodeURIComponent(String(input.shikimori_id))}`,
 			body: input.body,
 			scope: 'lists:write',
 		});
@@ -1083,16 +1017,16 @@ export class Library {
 
 	/**
 	 *
-	 * `DELETE /api/v1/lists/{shikimori_id}/score`
+	 * `DELETE /api/v1/progress/{shikimori_id}/score`
 	 * @scope `lists:write`
 	 */
-	unrateListEntry(input: {
+	unrateTitle(input: {
 		/** the shikimori id */
 		shikimori_id: number;
 	}): Promise<void> {
 		return this.core.call({
 			method: 'DELETE',
-			path: `/api/v1/lists/${encodeURIComponent(String(input.shikimori_id))}/score`,
+			path: `/api/v1/progress/${encodeURIComponent(String(input.shikimori_id))}/score`,
 			empty: true,
 			scope: 'lists:write',
 		});

@@ -434,19 +434,19 @@
         ]
       }
     },
-    "/api/v1/collections": {
+    "/api/v1/folders": {
       "get": {
         "tags": [
           "library"
         ],
-        "operationId": "listMyCollections",
+        "operationId": "listMyFolders",
         "responses": {
           "200": {
-            "description": "the shelves this account made",
+            "description": "the folders the caller keeps, and the ones they help keep",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Items_Collection"
+                  "$ref": "#/components/schemas/Items_Folder"
                 }
               }
             }
@@ -494,12 +494,12 @@
         "tags": [
           "library"
         ],
-        "operationId": "createCollection",
+        "operationId": "createFolder",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CollectionBody"
+                "$ref": "#/components/schemas/FolderBody"
               }
             }
           },
@@ -507,17 +507,17 @@
         },
         "responses": {
           "201": {
-            "description": "the shelf that was made, with its address in `Location`",
+            "description": "the folder that was made, with its address in `Location`",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Collection"
+                  "$ref": "#/components/schemas/Folder"
                 }
               }
             }
           },
           "400": {
-            "description": "a name that is empty, an icon off the allowlist, or one shelf too many",
+            "description": "a colour or a category nobody ships, or one folder too many",
             "content": {
               "application/json": {
                 "schema": {
@@ -566,17 +566,17 @@
         ]
       }
     },
-    "/api/v1/collections/{code}": {
+    "/api/v1/folders/{code}": {
       "get": {
         "tags": [
           "library"
         ],
-        "operationId": "getCollection",
+        "operationId": "getFolder",
         "parameters": [
           {
             "name": "code",
             "in": "path",
-            "description": "the shelf's code",
+            "description": "the folder's code",
             "required": true,
             "schema": {
               "type": "string"
@@ -585,11 +585,11 @@
         ],
         "responses": {
           "200": {
-            "description": "one shelf",
+            "description": "the folder",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Collection"
+                  "$ref": "#/components/schemas/Folder"
                 }
               }
             }
@@ -642,19 +642,17 @@
             ]
           }
         ]
-      }
-    },
-    "/api/v1/collections/{code}/items": {
-      "get": {
+      },
+      "delete": {
         "tags": [
           "library"
         ],
-        "operationId": "collectionItems",
+        "operationId": "deleteFolder",
         "parameters": [
           {
             "name": "code",
             "in": "path",
-            "description": "the shelf's code",
+            "description": "the folder's code",
             "required": true,
             "schema": {
               "type": "string"
@@ -662,15 +660,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "what is on it",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Items_CollectionItem"
-                }
-              }
-            }
+          "204": {
+            "description": "the folder and everything in it are gone"
           },
           "401": {
             "description": "no token, or a token that is not live",
@@ -683,105 +674,7 @@
             }
           },
           "403": {
-            "description": "the token does not carry `lists:read`, or the account it acts for is suspended",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "there is nothing there, or it is not yours to read",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "the minute is spent; `Retry-After` says when",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "oauth2": [
-              "lists:read"
-            ]
-          }
-        ]
-      }
-    },
-    "/api/v1/collections/{code}/items/{shikimori_id}": {
-      "put": {
-        "tags": [
-          "library"
-        ],
-        "operationId": "addCollectionItem",
-        "parameters": [
-          {
-            "name": "code",
-            "in": "path",
-            "description": "the shelf's code",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "shikimori_id",
-            "in": "path",
-            "description": "the shikimori id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EntryBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "the row that was added",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CollectionItem"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "no token, or a token that is not live",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "the token does not carry `lists:write`, or the account it acts for is suspended",
+            "description": "not theirs, the token does not carry `lists:write`, or the account is suspended",
             "content": {
               "application/json": {
                 "schema": {
@@ -819,16 +712,290 @@
           }
         ]
       },
-      "delete": {
+      "patch": {
         "tags": [
           "library"
         ],
-        "operationId": "removeCollectionItem",
+        "operationId": "editFolder",
         "parameters": [
           {
             "name": "code",
             "in": "path",
-            "description": "the shelf's code",
+            "description": "the folder's code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "the folder as it now stands",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Folder"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "no token, or a token that is not live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not theirs to change, the token does not carry `lists:write`, or the account is suspended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "there is nothing there, or it is not yours to read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "the minute is spent; `Retry-After` says when",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2": [
+              "lists:write"
+            ]
+          }
+        ]
+      }
+    },
+    "/api/v1/folders/{code}/items": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "operationId": "listFolderItems",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "the folder's code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "only titles whose name holds this",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "what is in it, in the order its authors put it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Items_FolderItem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "no token, or a token that is not live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "the token does not carry `lists:read`, or the account it acts for is suspended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "there is nothing there, or it is not yours to read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "the minute is spent; `Retry-After` says when",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2": [
+              "lists:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/api/v1/folders/{code}/items/{shikimori_id}": {
+      "put": {
+        "tags": [
+          "library"
+        ],
+        "operationId": "addFolderItem",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "the folder's code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "shikimori_id",
+            "in": "path",
+            "description": "the shikimori id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "it is in the folder; a status folder took it out of any other"
+          },
+          "400": {
+            "description": "the folder is full",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "no token, or a token that is not live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not theirs to add to, the token does not carry `lists:write`, or the account is suspended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "no such folder or title, or it is not yours to read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "the minute is spent; `Retry-After` says when",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2": [
+              "lists:write"
+            ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "library"
+        ],
+        "operationId": "removeFolderItem",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "the folder's code",
             "required": true,
             "schema": {
               "type": "string"
@@ -847,7 +1014,7 @@
         ],
         "responses": {
           "204": {
-            "description": "taken off the shelf"
+            "description": "it is not in the folder, whether or not it was"
           },
           "401": {
             "description": "no token, or a token that is not live",
@@ -860,7 +1027,7 @@
             }
           },
           "403": {
-            "description": "the token does not carry `lists:write`, or the account it acts for is suspended",
+            "description": "not theirs to take out, the token does not carry `lists:write`, or the account is suspended",
             "content": {
               "application/json": {
                 "schema": {
@@ -870,7 +1037,7 @@
             }
           },
           "404": {
-            "description": "there is nothing there, or it is not yours to read",
+            "description": "no such folder, or it is not yours to read",
             "content": {
               "application/json": {
                 "schema": {
@@ -1171,416 +1338,6 @@
           {
             "oauth2": [
               "catalog:read"
-            ]
-          }
-        ]
-      }
-    },
-    "/api/v1/lists": {
-      "get": {
-        "tags": [
-          "library"
-        ],
-        "summary": "The list, a page at a time.",
-        "description": "It used to answer the whole thing, which is the bug this api's own rules\nalready name: a caller with four hundred titles got four hundred rows and a\ncaller with four thousand got four thousand, and the only reason nobody was\nhurt by it is that nobody was using this door. `total` is beside the items\nbecause the paging is by offset, which is exactly when a caller has to know\nhow far the list goes.",
-        "operationId": "listMyList",
-        "parameters": [
-          {
-            "name": "status",
-            "in": "query",
-            "description": "narrow to one shelf: `planned` | `watching` | `rewatching` | `paused` | `done` | `dropped`",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "how many rows, 1-100; 30 by default",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "description": "where to carry on from",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "the caller's own list, a page at a time",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Items_ListEntry"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "no token, or a token that is not live",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "the token does not carry `lists:read`, or the account it acts for is suspended",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "the minute is spent; `Retry-After` says when",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "oauth2": [
-              "lists:read"
-            ]
-          }
-        ]
-      }
-    },
-    "/api/v1/lists/{shikimori_id}": {
-      "put": {
-        "tags": [
-          "library"
-        ],
-        "operationId": "saveListEntry",
-        "parameters": [
-          {
-            "name": "shikimori_id",
-            "in": "path",
-            "description": "the shikimori id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ListBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "the row as it now stands",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListEntry"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "a status that is not one of the six, or a title that is empty",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "no token, or a token that is not live",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "the token does not carry `lists:write`, or the account it acts for is suspended",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "the minute is spent; `Retry-After` says when",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "oauth2": [
-              "lists:write"
-            ]
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "library"
-        ],
-        "operationId": "removeListEntry",
-        "parameters": [
-          {
-            "name": "shikimori_id",
-            "in": "path",
-            "description": "the shikimori id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "taken off"
-          },
-          "401": {
-            "description": "no token, or a token that is not live",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "the token does not carry `lists:write`, or the account it acts for is suspended",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "there is nothing there, or it is not yours to read",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "the minute is spent; `Retry-After` says when",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "oauth2": [
-              "lists:write"
-            ]
-          }
-        ]
-      }
-    },
-    "/api/v1/lists/{shikimori_id}/score": {
-      "put": {
-        "tags": [
-          "library"
-        ],
-        "summary": "What somebody thought of a title, through a token.",
-        "description": "The same `plans::domain::rate` the site calls, so the two doors cannot come\nto disagree about what a score is — which is the whole reason the domain\nexists. What differs is what this surface always differs by: 404 where the\nsite answers 204 for a delete that removed nothing.",
-        "operationId": "rateListEntry",
-        "parameters": [
-          {
-            "name": "shikimori_id",
-            "in": "path",
-            "description": "the shikimori id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ScoreBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "the row, with the score on it",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListEntry"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "no token, or a token that is not live",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "the token does not carry `lists:write`, or the account it acts for is suspended",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "there is nothing there, or it is not yours to read",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "the minute is spent; `Retry-After` says when",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "oauth2": [
-              "lists:write"
-            ]
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "library"
-        ],
-        "operationId": "unrateListEntry",
-        "parameters": [
-          {
-            "name": "shikimori_id",
-            "in": "path",
-            "description": "the shikimori id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "the score taken off; the row stays"
-          },
-          "401": {
-            "description": "no token, or a token that is not live",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "the token does not carry `lists:write`, or the account it acts for is suspended",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "there is nothing there, or it is not yours to read",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "the minute is spent; `Retry-After` says when",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "oauth2": [
-              "lists:write"
             ]
           }
         ]
@@ -2158,6 +1915,311 @@
           {
             "oauth2": [
               "social:write"
+            ]
+          }
+        ]
+      }
+    },
+    "/api/v1/progress/{shikimori_id}": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "operationId": "getProgress",
+        "parameters": [
+          {
+            "name": "shikimori_id",
+            "in": "path",
+            "description": "the shikimori id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "how far through it they are, and what they thought of it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Progress"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "no token, or a token that is not live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "the token does not carry `lists:read`, or the account it acts for is suspended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "they have not started it or judged it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "the minute is spent; `Retry-After` says when",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2": [
+              "lists:read"
+            ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "library"
+        ],
+        "operationId": "setProgress",
+        "parameters": [
+          {
+            "name": "shikimori_id",
+            "in": "path",
+            "description": "the shikimori id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EpisodeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "the row as it now stands; the first episode puts the title in watching",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Progress"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "no token, or a token that is not live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "the token does not carry `lists:write`, or the account it acts for is suspended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "the minute is spent; `Retry-After` says when",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2": [
+              "lists:write"
+            ]
+          }
+        ]
+      }
+    },
+    "/api/v1/progress/{shikimori_id}/score": {
+      "put": {
+        "tags": [
+          "library"
+        ],
+        "operationId": "rateTitle",
+        "parameters": [
+          {
+            "name": "shikimori_id",
+            "in": "path",
+            "description": "the shikimori id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScoreBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "the row with the score on it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Progress"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "a score outside 1-10",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "no token, or a token that is not live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "the token does not carry `lists:write`, or the account it acts for is suspended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "the minute is spent; `Retry-After` says when",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2": [
+              "lists:write"
+            ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "library"
+        ],
+        "operationId": "unrateTitle",
+        "parameters": [
+          {
+            "name": "shikimori_id",
+            "in": "path",
+            "description": "the shikimori id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "the score is off"
+          },
+          "401": {
+            "description": "no token, or a token that is not live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "the token does not carry `lists:write`, or the account it acts for is suspended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "the minute is spent; `Retry-After` says when",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2": [
+              "lists:write"
             ]
           }
         ]
@@ -3113,12 +3175,13 @@
         ]
       }
     },
-    "/api/v1/users/{nick}/collections": {
+    "/api/v1/users/{nick}/folders": {
       "get": {
         "tags": [
           "people"
         ],
-        "operationId": "userCollections",
+        "summary": "Somebody's public folders, behind the audience they chose for folders.",
+        "operationId": "userFolders",
         "parameters": [
           {
             "name": "nick",
@@ -3132,11 +3195,11 @@
         ],
         "responses": {
           "200": {
-            "description": "the shelves they named and left public",
+            "description": "the folders they made public, if their folders are anybody's business",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Items_Collection"
+                  "$ref": "#/components/schemas/Items_Folder"
                 }
               }
             }
@@ -3333,114 +3396,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Items_Person"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "no token, or a token that is not live",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "the token does not carry `people:read`, or the account it acts for is suspended",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "there is nothing there, or it is not yours to read",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "the minute is spent; `Retry-After` says when",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refusal"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "oauth2": [
-              "people:read"
-            ]
-          }
-        ]
-      }
-    },
-    "/api/v1/users/{nick}/lists": {
-      "get": {
-        "tags": [
-          "people"
-        ],
-        "summary": "What somebody is watching, if their list is anybody's business.",
-        "operationId": "userLists",
-        "parameters": [
-          {
-            "name": "nick",
-            "in": "path",
-            "description": "a nickname the account answers to, current or past",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "description": "narrow to one shelf: `planned` | `watching` | `rewatching` | `paused` | `done` | `dropped`",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "how many rows, 1-100; 30 by default",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "description": "where to carry on from",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "what somebody is watching, if their list is anybody's business",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Items_ListEntry"
                 }
               }
             }
@@ -3692,171 +3647,6 @@
           }
         }
       },
-      "Collection": {
-        "type": "object",
-        "description": "A shelf somebody named.",
-        "required": [
-          "code",
-          "name",
-          "about",
-          "icon",
-          "visibility",
-          "shared",
-          "count",
-          "saves",
-          "owner",
-          "owner_verified",
-          "covers",
-          "at",
-          "edited"
-        ],
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "about": {
-            "type": "string"
-          },
-          "icon": {
-            "type": "string"
-          },
-          "hue": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "visibility": {
-            "type": "string",
-            "description": "`public` | `unlisted` | `private`"
-          },
-          "shared": {
-            "type": "boolean",
-            "description": "whether anyone who can read it may also add to it"
-          },
-          "count": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "saves": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "owner": {
-            "type": "string"
-          },
-          "owner_avatar": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "owner_verified": {
-            "type": "boolean"
-          },
-          "covers": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "at": {
-            "type": "string"
-          },
-          "edited": {
-            "type": "string"
-          }
-        }
-      },
-      "CollectionBody": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "about": {
-            "type": "string"
-          },
-          "icon": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "hue": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "visibility": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "shared": {
-            "type": "boolean"
-          }
-        }
-      },
-      "CollectionItem": {
-        "type": "object",
-        "required": [
-          "shikimori_id",
-          "title",
-          "at"
-        ],
-        "properties": {
-          "shikimori_id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "title": {
-            "type": "string"
-          },
-          "poster": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "added_by": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "at": {
-            "type": "string"
-          }
-        }
-      },
-      "EntryBody": {
-        "type": "object",
-        "required": [
-          "title"
-        ],
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "poster": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
       "Episode": {
         "type": "object",
         "description": "The preview frames one episode has.",
@@ -3874,6 +3664,204 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "EpisodeBody": {
+        "type": "object",
+        "required": [
+          "episode"
+        ],
+        "properties": {
+          "episode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rewatching": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "Folder": {
+        "type": "object",
+        "description": "A folder: a status somebody keeps titles under, or a shelf they named.\n\nThe five status categories are exclusive — a title sits in at most one of an\naccount's `watching`, `planned`, `done`, `paused` and `dropped` folders — and\n`other` folders hold whatever they like.",
+        "required": [
+          "code",
+          "category",
+          "color",
+          "about",
+          "public",
+          "count",
+          "owner",
+          "posters",
+          "at",
+          "edited"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null: the category's own name, in whatever language the reader uses"
+          },
+          "category": {
+            "type": "string",
+            "description": "`watching` | `planned` | `done` | `paused` | `dropped` | `other`"
+          },
+          "color": {
+            "type": "string",
+            "description": "`#RRGGBB`"
+          },
+          "about": {
+            "type": "string"
+          },
+          "cover": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "public": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "owner": {
+            "type": "string",
+            "description": "the account it belongs to, by its current name"
+          },
+          "posters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "the three newest posters in it"
+          },
+          "at": {
+            "type": "string"
+          },
+          "edited": {
+            "type": "string"
+          }
+        }
+      },
+      "FolderBody": {
+        "type": "object",
+        "required": [
+          "category"
+        ],
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "leave out for the category's own name"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`#rrggbb`; leave out for the category's colour"
+          },
+          "category": {
+            "type": "string",
+            "description": "`watching` | `planned` | `done` | `paused` | `dropped` | `other`"
+          }
+        }
+      },
+      "FolderItem": {
+        "type": "object",
+        "required": [
+          "shikimori_id",
+          "title",
+          "note",
+          "position",
+          "at"
+        ],
+        "properties": {
+          "shikimori_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": {
+            "type": "string"
+          },
+          "poster": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "description": "what its authors wrote beside it"
+          },
+          "group_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "the group it sits in, if the folder has any"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "at": {
+            "type": "string"
+          }
+        }
+      },
+      "FolderPatch": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`\"\"` gives the folder its category's name back"
+          },
+          "about": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "public": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "ItemBody": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -4029,156 +4017,6 @@
           }
         }
       },
-      "Items_Collection": {
-        "type": "object",
-        "description": "A collection.\n\n`total` is written only where the caller pages by offset and therefore has to\nknow how far the list goes; a cursor-paged list leaves it out rather than\npaying for a second count nobody reads.",
-        "required": [
-          "items"
-        ],
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "description": "A shelf somebody named.",
-              "required": [
-                "code",
-                "name",
-                "about",
-                "icon",
-                "visibility",
-                "shared",
-                "count",
-                "saves",
-                "owner",
-                "owner_verified",
-                "covers",
-                "at",
-                "edited"
-              ],
-              "properties": {
-                "code": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "about": {
-                  "type": "string"
-                },
-                "icon": {
-                  "type": "string"
-                },
-                "hue": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "format": "int32"
-                },
-                "visibility": {
-                  "type": "string",
-                  "description": "`public` | `unlisted` | `private`"
-                },
-                "shared": {
-                  "type": "boolean",
-                  "description": "whether anyone who can read it may also add to it"
-                },
-                "count": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "saves": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "owner": {
-                  "type": "string"
-                },
-                "owner_avatar": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "owner_verified": {
-                  "type": "boolean"
-                },
-                "covers": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "at": {
-                  "type": "string"
-                },
-                "edited": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "total": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          }
-        }
-      },
-      "Items_CollectionItem": {
-        "type": "object",
-        "description": "A collection.\n\n`total` is written only where the caller pages by offset and therefore has to\nknow how far the list goes; a cursor-paged list leaves it out rather than\npaying for a second count nobody reads.",
-        "required": [
-          "items"
-        ],
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": [
-                "shikimori_id",
-                "title",
-                "at"
-              ],
-              "properties": {
-                "shikimori_id": {
-                  "type": "integer",
-                  "format": "int32"
-                },
-                "title": {
-                  "type": "string"
-                },
-                "poster": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "added_by": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "at": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "total": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          }
-        }
-      },
       "Items_Episode": {
         "type": "object",
         "description": "A collection.\n\n`total` is written only where the caller pages by offset and therefore has to\nknow how far the list goes; a cursor-paged list leaves it out rather than\npaying for a second count nobody reads.",
@@ -4218,7 +4056,7 @@
           }
         }
       },
-      "Items_ListEntry": {
+      "Items_Folder": {
         "type": "object",
         "description": "A collection.\n\n`total` is written only where the caller pages by offset and therefore has to\nknow how far the list goes; a cursor-paged list leaves it out rather than\npaying for a second count nobody reads.",
         "required": [
@@ -4229,12 +4067,99 @@
             "type": "array",
             "items": {
               "type": "object",
-              "description": "One row of somebody's list.\n\nOne shape for a caller's own list and for somebody else's, because it is one\nthing. Two shapes differing by a field would be two unwrappers in every SDK\nfor a row that means exactly the same in both places.",
+              "description": "A folder: a status somebody keeps titles under, or a shelf they named.\n\nThe five status categories are exclusive — a title sits in at most one of an\naccount's `watching`, `planned`, `done`, `paused` and `dropped` folders — and\n`other` folders hold whatever they like.",
+              "required": [
+                "code",
+                "category",
+                "color",
+                "about",
+                "public",
+                "count",
+                "owner",
+                "posters",
+                "at",
+                "edited"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "null: the category's own name, in whatever language the reader uses"
+                },
+                "category": {
+                  "type": "string",
+                  "description": "`watching` | `planned` | `done` | `paused` | `dropped` | `other`"
+                },
+                "color": {
+                  "type": "string",
+                  "description": "`#RRGGBB`"
+                },
+                "about": {
+                  "type": "string"
+                },
+                "cover": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "public": {
+                  "type": "boolean"
+                },
+                "count": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "owner": {
+                  "type": "string",
+                  "description": "the account it belongs to, by its current name"
+                },
+                "posters": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "the three newest posters in it"
+                },
+                "at": {
+                  "type": "string"
+                },
+                "edited": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "Items_FolderItem": {
+        "type": "object",
+        "description": "A collection.\n\n`total` is written only where the caller pages by offset and therefore has to\nknow how far the list goes; a cursor-paged list leaves it out rather than\npaying for a second count nobody reads.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
               "required": [
                 "shikimori_id",
                 "title",
-                "status",
-                "episode",
+                "note",
+                "position",
                 "at"
               ],
               "properties": {
@@ -4251,34 +4176,24 @@
                     "null"
                   ]
                 },
-                "status": {
+                "note": {
                   "type": "string",
-                  "description": "`planned` | `watching` | `rewatching` | `paused` | `done` | `dropped`"
+                  "description": "what its authors wrote beside it"
                 },
-                "episode": {
+                "group_id": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int64",
+                  "description": "the group it sits in, if the folder has any"
+                },
+                "position": {
                   "type": "integer",
-                  "format": "int32",
-                  "description": "how many they have watched"
-                },
-                "episodes": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "format": "int32",
-                  "description": "How many the catalogue holds, so a counter knows where the series stops.\nAbsent where the catalogue does not carry it or does not know — an\nannouncement, and a good half of what is airing — and absent means \"no\nceiling\" rather than \"none\"."
-                },
-                "score": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "format": "int32",
-                  "description": "what they thought of it; null for a title they have not judged"
+                  "format": "int32"
                 },
                 "at": {
-                  "type": "string",
-                  "description": "RFC 3339, and a string rather than a timestamp type for a reason that is\nabout having one shape: this row comes from two places, and the site's\nown reader already formats it. A parse on this side to fit a stricter\ntype would need something to do when it failed, and every honest answer\nto that is a lie about when somebody watched something."
+                  "type": "string"
                 }
               }
             }
@@ -4771,91 +4686,6 @@
           }
         }
       },
-      "ListBody": {
-        "type": "object",
-        "required": [
-          "title"
-        ],
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "poster": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "status": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "episode": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          }
-        }
-      },
-      "ListEntry": {
-        "type": "object",
-        "description": "One row of somebody's list.\n\nOne shape for a caller's own list and for somebody else's, because it is one\nthing. Two shapes differing by a field would be two unwrappers in every SDK\nfor a row that means exactly the same in both places.",
-        "required": [
-          "shikimori_id",
-          "title",
-          "status",
-          "episode",
-          "at"
-        ],
-        "properties": {
-          "shikimori_id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "title": {
-            "type": "string"
-          },
-          "poster": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "description": "`planned` | `watching` | `rewatching` | `paused` | `done` | `dropped`"
-          },
-          "episode": {
-            "type": "integer",
-            "format": "int32",
-            "description": "how many they have watched"
-          },
-          "episodes": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32",
-            "description": "How many the catalogue holds, so a counter knows where the series stops.\nAbsent where the catalogue does not carry it or does not know — an\nannouncement, and a good half of what is airing — and absent means \"no\nceiling\" rather than \"none\"."
-          },
-          "score": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32",
-            "description": "what they thought of it; null for a title they have not judged"
-          },
-          "at": {
-            "type": "string",
-            "description": "RFC 3339, and a string rather than a timestamp type for a reason that is\nabout having one shape: this row comes from two places, and the site's\nown reader already formats it. A parse on this side to fit a stricter\ntype would need something to do when it failed, and every honest answer\nto that is a lie about when somebody watched something."
-          }
-        }
-      },
       "Me": {
         "type": "object",
         "description": "An account, as its own token sees it.\n\nField for field what `/oauth2/userinfo` would say, in this door's casing,\nplus the things a claim set has no room for. It exists beside userinfo rather\nthan instead of it because userinfo's shape is fixed by a spec and this one\nis ours to grow.",
@@ -5211,6 +5041,55 @@
           }
         }
       },
+      "Progress": {
+        "type": "object",
+        "description": "How far through a title somebody is. It belongs to the title, not to a\nfolder: taking a title out of every folder keeps it.",
+        "required": [
+          "shikimori_id",
+          "episode",
+          "rewatching",
+          "at"
+        ],
+        "properties": {
+          "shikimori_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "the status folder it is in, if any: `watching` | `planned` | `done` | `paused` | `dropped`"
+          },
+          "episode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "absent where the catalogue does not know, which is \"no ceiling\", not \"none\""
+          },
+          "rewatching": {
+            "type": "boolean"
+          },
+          "score": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "1-10; null for a title they have not judged"
+          },
+          "at": {
+            "type": "string"
+          }
+        }
+      },
       "Refusal": {
         "type": "object",
         "description": "Every refusal on this door, in the one shape they all take.\n\n`message` is a **phrase name and never a sentence**: one room can hold five\nlanguages at once, so the server does not get to choose which one an error is\nread in. A client shows its own words for the names it knows and the name\nitself for the ones it does not — which is also why the list of them is\nstable enough to generate a typed error per name in six languages.",
@@ -5260,16 +5139,8 @@
         "properties": {
           "score": {
             "type": "integer",
-            "format": "int32"
-          },
-          "title": {
-            "type": "string"
-          },
-          "poster": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "format": "int32",
+            "description": "1 to 10"
           }
         }
       },
@@ -5634,7 +5505,7 @@
     },
     {
       "name": "library",
-      "description": "somebody's own list and shelves"
+      "description": "somebody's own folders and how far through each title they are"
     },
     {
       "name": "social",

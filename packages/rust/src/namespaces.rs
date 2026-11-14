@@ -24,7 +24,7 @@ impl crate::Acyka {
         People { core: &self.core }
     }
 
-    /// somebody's own list and shelves
+    /// somebody's own folders and how far through each title they are
     pub fn library(&self) -> Library<'_> {
         Library { core: &self.core }
     }

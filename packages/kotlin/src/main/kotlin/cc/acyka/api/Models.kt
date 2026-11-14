@@ -118,83 +118,6 @@ public data class CharacterCard(
 )
 
 /**
- * A shelf somebody named.
- */
-@Serializable
-public data class Collection(
-    @SerialName("code")
-    public val code: String,
-    @SerialName("name")
-    public val name: String,
-    @SerialName("about")
-    public val about: String,
-    @SerialName("icon")
-    public val icon: String,
-    /** `public` | `unlisted` | `private` */
-    @SerialName("visibility")
-    public val visibility: String,
-    /** whether anyone who can read it may also add to it */
-    @SerialName("shared")
-    public val shared: Boolean,
-    @SerialName("count")
-    public val count: Long,
-    @SerialName("saves")
-    public val saves: Long,
-    @SerialName("owner")
-    public val owner: String,
-    @SerialName("owner_verified")
-    public val ownerVerified: Boolean,
-    @SerialName("covers")
-    public val covers: List<String>,
-    @SerialName("at")
-    public val at: String,
-    @SerialName("edited")
-    public val edited: String,
-    @SerialName("hue")
-    public val hue: Int? = null,
-    @SerialName("owner_avatar")
-    public val ownerAvatar: String? = null,
-)
-
-@Serializable
-public data class CollectionBody(
-    @SerialName("name")
-    public val name: String,
-    @SerialName("about")
-    public val about: String? = null,
-    @SerialName("icon")
-    public val icon: String? = null,
-    @SerialName("hue")
-    public val hue: Int? = null,
-    @SerialName("visibility")
-    public val visibility: String? = null,
-    @SerialName("shared")
-    public val shared: Boolean? = null,
-)
-
-@Serializable
-public data class CollectionItem(
-    @SerialName("shikimori_id")
-    public val shikimoriId: Int,
-    @SerialName("title")
-    public val title: String,
-    @SerialName("at")
-    public val at: String,
-    @SerialName("poster")
-    public val poster: String? = null,
-    @SerialName("added_by")
-    public val addedBy: String? = null,
-)
-
-@Serializable
-public data class EntryBody(
-    @SerialName("title")
-    public val title: String,
-    @SerialName("poster")
-    public val poster: String? = null,
-)
-
-/**
  * The preview frames one episode has.
  */
 @Serializable
@@ -206,47 +129,103 @@ public data class Episode(
 )
 
 @Serializable
-public data class ListBody(
-    @SerialName("title")
-    public val title: String,
-    @SerialName("poster")
-    public val poster: String? = null,
-    @SerialName("status")
-    public val status: String? = null,
+public data class EpisodeBody(
     @SerialName("episode")
-    public val episode: Int? = null,
+    public val episode: Int,
+    @SerialName("rewatching")
+    public val rewatching: Boolean? = null,
 )
 
 /**
- * One row of somebody's list.
+ * A folder: a status somebody keeps titles under, or a shelf they named.
  *
- * One shape for a caller's own list and for somebody else's, because it is one
- * thing. Two shapes differing by a field would be two unwrappers in every SDK
- * for a row that means exactly the same in both places.
+ * The five status categories are exclusive — a title sits in at most one of an
+ * account's `watching`, `planned`, `done`, `paused` and `dropped` folders —
+ * and `other` folders hold whatever they like.
  */
 @Serializable
-public data class ListEntry(
+public data class Folder(
+    @SerialName("code")
+    public val code: String,
+    /** `watching` | `planned` | `done` | `paused` | `dropped` | `other` */
+    @SerialName("category")
+    public val category: String,
+    /** `#RRGGBB` */
+    @SerialName("color")
+    public val color: String,
+    @SerialName("about")
+    public val about: String,
+    @SerialName("public")
+    public val public: Boolean,
+    @SerialName("count")
+    public val count: Long,
+    /** the account it belongs to, by its current name */
+    @SerialName("owner")
+    public val owner: String,
+    /** the three newest posters in it */
+    @SerialName("posters")
+    public val posters: List<String>,
+    @SerialName("at")
+    public val at: String,
+    @SerialName("edited")
+    public val edited: String,
+    /** null: the category's own name, in whatever language the reader uses */
+    @SerialName("name")
+    public val name: String? = null,
+    @SerialName("cover")
+    public val cover: String? = null,
+)
+
+@Serializable
+public data class FolderBody(
+    /** `watching` | `planned` | `done` | `paused` | `dropped` | `other` */
+    @SerialName("category")
+    public val category: String,
+    /** leave out for the category's own name */
+    @SerialName("name")
+    public val name: String? = null,
+    /** `#rrggbb`; leave out for the category's colour */
+    @SerialName("color")
+    public val color: String? = null,
+)
+
+@Serializable
+public data class FolderItem(
     @SerialName("shikimori_id")
     public val shikimoriId: Int,
     @SerialName("title")
     public val title: String,
-    /** `planned` | `watching` | `rewatching` | `paused` | `done` | `dropped` */
-    @SerialName("status")
-    public val status: String,
-    /** how many they have watched */
-    @SerialName("episode")
-    public val episode: Int,
-    /** RFC 3339, and a string rather than a timestamp type for a reason that is about having one shape: this row comes from two places, and the site's own reader already formats it. A parse on this side to fit a stricter type would need something to do when it failed, and every honest answer to that is a lie about when somebody watched something. */
+    /** what its authors wrote beside it */
+    @SerialName("note")
+    public val note: String,
+    @SerialName("position")
+    public val position: Int,
     @SerialName("at")
     public val at: String,
     @SerialName("poster")
     public val poster: String? = null,
-    /** How many the catalogue holds, so a counter knows where the series stops. Absent where the catalogue does not carry it or does not know — an announcement, and a good half of what is airing — and absent means "no ceiling" rather than "none". */
-    @SerialName("episodes")
-    public val episodes: Int? = null,
-    /** what they thought of it; null for a title they have not judged */
-    @SerialName("score")
-    public val score: Int? = null,
+    /** the group it sits in, if the folder has any */
+    @SerialName("group_id")
+    public val groupId: Long? = null,
+)
+
+@Serializable
+public data class FolderPatch(
+    /** `""` gives the folder its category's name back */
+    @SerialName("name")
+    public val name: String? = null,
+    @SerialName("about")
+    public val about: String? = null,
+    @SerialName("color")
+    public val color: String? = null,
+    @SerialName("public")
+    public val public: Boolean? = null,
+)
+
+@Serializable
+public data class ItemBody(
+    @SerialName("note")
+    public val note: String? = null,
 )
 
 /**
@@ -428,6 +407,31 @@ public data class Profile(
 )
 
 /**
+ * How far through a title somebody is. It belongs to the title, not to a
+ * folder: taking a title out of every folder keeps it.
+ */
+@Serializable
+public data class Progress(
+    @SerialName("shikimori_id")
+    public val shikimoriId: Int,
+    @SerialName("episode")
+    public val episode: Int,
+    @SerialName("rewatching")
+    public val rewatching: Boolean,
+    @SerialName("at")
+    public val at: String,
+    /** the status folder it is in, if any: `watching` | `planned` | `done` | `paused` | `dropped` */
+    @SerialName("status")
+    public val status: String? = null,
+    /** absent where the catalogue does not know, which is "no ceiling", not "none" */
+    @SerialName("episodes")
+    public val episodes: Int? = null,
+    /** 1-10; null for a title they have not judged */
+    @SerialName("score")
+    public val score: Int? = null,
+)
+
+/**
  * Every refusal on this door, in the one shape they all take.
  *
  * `message` is a **phrase name and never a sentence**: one room can hold five
@@ -476,12 +480,9 @@ public data class Related(
 
 @Serializable
 public data class ScoreBody(
+    /** 1 to 10 */
     @SerialName("score")
     public val score: Int,
-    @SerialName("title")
-    public val title: String? = null,
-    @SerialName("poster")
-    public val poster: String? = null,
 )
 
 /**

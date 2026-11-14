@@ -211,77 +211,82 @@ struct TitleStaffRequest {
     std::optional<std::string> lang;
 };
 
-/// What `addCollectionItem` is asked with.
-struct AddCollectionItemRequest {
-    /// the shelf's code
+/// What `addFolderItem` is asked with.
+struct AddFolderItemRequest {
+    /// the folder's code
     std::string code{};
     /// the shikimori id
     std::int32_t shikimori_id{};
     /// the request body
-    EntryBody body{};
+    ItemBody body{};
 };
 
-/// What `collectionItems` is asked with.
-struct CollectionItemsRequest {
-    /// the shelf's code
-    std::string code{};
-};
-
-/// What `createCollection` is asked with.
-struct CreateCollectionRequest {
+/// What `createFolder` is asked with.
+struct CreateFolderRequest {
     /// the request body
-    CollectionBody body{};
+    FolderBody body{};
 };
 
-/// What `getCollection` is asked with.
-struct GetCollectionRequest {
-    /// the shelf's code
+/// What `deleteFolder` is asked with.
+struct DeleteFolderRequest {
+    /// the folder's code
     std::string code{};
 };
 
-/// What `listMyList` is asked with.
-struct ListMyListRequest {
-    /// narrow to one shelf: `planned` | `watching` | `rewatching` | `paused` |
-    /// `done` | `dropped`
-    std::optional<std::string> status;
-    /// how many rows, 1-100; 30 by default
-    std::optional<std::int64_t> limit;
-    /// where to carry on from
-    std::optional<std::int64_t> offset;
+/// What `editFolder` is asked with.
+struct EditFolderRequest {
+    /// the folder's code
+    std::string code{};
+    /// the request body
+    FolderPatch body{};
 };
 
-/// What `rateListEntry` is asked with.
-struct RateListEntryRequest {
+/// What `getFolder` is asked with.
+struct GetFolderRequest {
+    /// the folder's code
+    std::string code{};
+};
+
+/// What `getProgress` is asked with.
+struct GetProgressRequest {
+    /// the shikimori id
+    std::int32_t shikimori_id{};
+};
+
+/// What `listFolderItems` is asked with.
+struct ListFolderItemsRequest {
+    /// the folder's code
+    std::string code{};
+    /// only titles whose name holds this
+    std::optional<std::string> q;
+};
+
+/// What `rateTitle` is asked with.
+struct RateTitleRequest {
     /// the shikimori id
     std::int32_t shikimori_id{};
     /// the request body
     ScoreBody body{};
 };
 
-/// What `removeCollectionItem` is asked with.
-struct RemoveCollectionItemRequest {
-    /// the shelf's code
+/// What `removeFolderItem` is asked with.
+struct RemoveFolderItemRequest {
+    /// the folder's code
     std::string code{};
     /// the shikimori id
     std::int32_t shikimori_id{};
 };
 
-/// What `removeListEntry` is asked with.
-struct RemoveListEntryRequest {
-    /// the shikimori id
-    std::int32_t shikimori_id{};
-};
-
-/// What `saveListEntry` is asked with.
-struct SaveListEntryRequest {
+/// What `setProgress` is asked with.
+struct SetProgressRequest {
     /// the shikimori id
     std::int32_t shikimori_id{};
     /// the request body
-    ListBody body{};
+    EpisodeBody body{};
 };
 
-/// What `unrateListEntry` is asked with.
-struct UnrateListEntryRequest {
+/// What `unrateTitle` is asked with.
+struct UnrateTitleRequest {
     /// the shikimori id
     std::int32_t shikimori_id{};
 };
@@ -300,8 +305,8 @@ struct SearchUsersRequest {
     std::optional<std::int64_t> limit;
 };
 
-/// What `userCollections` is asked with.
-struct UserCollectionsRequest {
+/// What `userFolders` is asked with.
+struct UserFoldersRequest {
     /// a nickname the account answers to, current or past
     std::string nick{};
 };
@@ -320,19 +325,6 @@ struct UserFollowersRequest {
 struct UserFollowingRequest {
     /// a nickname the account answers to, current or past
     std::string nick{};
-    /// how many rows, 1-100; 30 by default
-    std::optional<std::int64_t> limit;
-    /// where to carry on from
-    std::optional<std::int64_t> offset;
-};
-
-/// What `userLists` is asked with.
-struct UserListsRequest {
-    /// a nickname the account answers to, current or past
-    std::string nick{};
-    /// narrow to one shelf: `planned` | `watching` | `rewatching` | `paused` |
-    /// `done` | `dropped`
-    std::optional<std::string> status;
     /// how many rows, 1-100; 30 by default
     std::optional<std::int64_t> limit;
     /// where to carry on from
@@ -799,12 +791,13 @@ class people_api {
         return core_->call("GET", path, query.str(), std::string{}, false).get<page<Person>>();
     }
 
+    /// Somebody's public folders, behind the audience they chose for folders.
     ///
-    /// `GET /api/v1/users/{nick}/collections`, needs `people:read`
-    page<Collection> user_collections(const UserCollectionsRequest& in) const {
-        std::string path = "/api/v1/users/{nick}/collections";
+    /// `GET /api/v1/users/{nick}/folders`, needs `people:read`
+    page<Folder> user_folders(const UserFoldersRequest& in) const {
+        std::string path = "/api/v1/users/{nick}/folders";
         replace_in(path, "{nick}", detail::urlencode(in.nick));
-        return core_->call("GET", path, std::string{}, std::string{}, false).get<page<Collection>>();
+        return core_->call("GET", path, std::string{}, std::string{}, false).get<page<Folder>>();
     }
 
     ///
@@ -881,45 +874,6 @@ class people_api {
         }
     }
 
-    /// What somebody is watching, if their list is anybody's business.
-    ///
-    /// `GET /api/v1/users/{nick}/lists`, needs `people:read`
-    page<ListEntry> user_lists(const UserListsRequest& in) const {
-        std::string path = "/api/v1/users/{nick}/lists";
-        replace_in(path, "{nick}", detail::urlencode(in.nick));
-        query_string query;
-        query.add("status", in.status);
-        query.add("limit", in.limit);
-        query.add("offset", in.offset);
-        return core_->call("GET", path, query.str(), std::string{}, false).get<page<ListEntry>>();
-    }
-
-    /// Every row, gathered a page at a time.
-    ///
-    /// Stops when a page comes back shorter than it asked for rather than
-    /// when `total` is reached: the list can grow while it is being read, and
-    /// counting against a number from the first page walks off the end.
-    ///
-    /// A vector rather than a lazy range, and that is a choice: a coroutine
-    /// generator would need C++23 or a dependency, and a callback would put
-    /// the caller inside somebody else's loop. The `on_page` hook is there
-    /// for whoever cannot hold the whole list.
-    std::vector<ListEntry> user_lists_all(UserListsRequest in, const std::function<bool(const page<ListEntry>&)>& on_page = {}) const {
-        std::vector<ListEntry> all;
-        const std::int64_t window = in.limit.value_or(100);
-        std::int64_t at = in.offset.value_or(0);
-        for (;;) {
-            in.limit = window;
-            in.offset = at;
-            auto got = user_lists(in);
-            const auto seen = static_cast<std::int64_t>(got.items.size());
-            if (on_page && !on_page(got)) return all;
-            all.insert(all.end(), got.items.begin(), got.items.end());
-            if (seen < window) return all;
-            at += seen;
-        }
-    }
-
     ///
     /// `GET /api/v1/users/{nick}/stats`, needs `people:read`
     Stats user_stats(const UserStatsRequest& in) const {
@@ -932,134 +886,105 @@ class people_api {
     std::shared_ptr<core> core_;
 };
 
-/// somebody's own list and shelves
+/// somebody's own folders and how far through each title they are
 class library_api {
  public:
     explicit library_api(std::shared_ptr<core> core) : core_(std::move(core)) {}
 
     ///
-    /// `PUT /api/v1/collections/{code}/items/{shikimori_id}`, needs `lists:write`
-    CollectionItem add_collection_item(const AddCollectionItemRequest& in) const {
-        std::string path = "/api/v1/collections/{code}/items/{shikimori_id}";
+    /// `PUT /api/v1/folders/{code}/items/{shikimori_id}`, needs `lists:write`
+    void add_folder_item(const AddFolderItemRequest& in) const {
+        std::string path = "/api/v1/folders/{code}/items/{shikimori_id}";
         replace_in(path, "{code}", detail::urlencode(in.code));
         replace_in(path, "{shikimori_id}", detail::urlencode(std::to_string(in.shikimori_id)));
-        return core_->call("PUT", path, std::string{}, nlohmann::json(in.body).dump(), true).get<CollectionItem>();
+        core_->call("PUT", path, std::string{}, nlohmann::json(in.body).dump(), true);
     }
 
     ///
-    /// `GET /api/v1/collections/{code}/items`, needs `lists:read`
-    page<CollectionItem> collection_items(const CollectionItemsRequest& in) const {
-        std::string path = "/api/v1/collections/{code}/items";
+    /// `POST /api/v1/folders`, needs `lists:write`
+    Folder create_folder(const CreateFolderRequest& in) const {
+        const std::string path = "/api/v1/folders";
+        return core_->call("POST", path, std::string{}, nlohmann::json(in.body).dump(), true).get<Folder>();
+    }
+
+    ///
+    /// `DELETE /api/v1/folders/{code}`, needs `lists:write`
+    void delete_folder(const DeleteFolderRequest& in) const {
+        std::string path = "/api/v1/folders/{code}";
         replace_in(path, "{code}", detail::urlencode(in.code));
-        return core_->call("GET", path, std::string{}, std::string{}, false).get<page<CollectionItem>>();
+        core_->call("DELETE", path, std::string{}, std::string{}, false);
     }
 
     ///
-    /// `POST /api/v1/collections`, needs `lists:write`
-    Collection create_collection(const CreateCollectionRequest& in) const {
-        const std::string path = "/api/v1/collections";
-        return core_->call("POST", path, std::string{}, nlohmann::json(in.body).dump(), true).get<Collection>();
-    }
-
-    ///
-    /// `GET /api/v1/collections/{code}`, needs `lists:read`
-    Collection get_collection(const GetCollectionRequest& in) const {
-        std::string path = "/api/v1/collections/{code}";
+    /// `PATCH /api/v1/folders/{code}`, needs `lists:write`
+    Folder edit_folder(const EditFolderRequest& in) const {
+        std::string path = "/api/v1/folders/{code}";
         replace_in(path, "{code}", detail::urlencode(in.code));
-        return core_->call("GET", path, std::string{}, std::string{}, false).get<Collection>();
+        return core_->call("PATCH", path, std::string{}, nlohmann::json(in.body).dump(), true).get<Folder>();
     }
 
     ///
-    /// `GET /api/v1/collections`, needs `lists:read`
-    page<Collection> list_my_collections() const {
-        const std::string path = "/api/v1/collections";
-        return core_->call("GET", path, std::string{}, std::string{}, false).get<page<Collection>>();
+    /// `GET /api/v1/folders/{code}`, needs `lists:read`
+    Folder get_folder(const GetFolderRequest& in) const {
+        std::string path = "/api/v1/folders/{code}";
+        replace_in(path, "{code}", detail::urlencode(in.code));
+        return core_->call("GET", path, std::string{}, std::string{}, false).get<Folder>();
     }
 
-    /// It used to answer the whole thing, which is the bug this api's own rules
-    /// already name: a caller with four hundred titles got four hundred rows and a
-    /// caller with four thousand got four thousand, and the only reason nobody was
-    /// hurt by it is that nobody was using this door. `total` is beside the items
-    /// because the paging is by offset, which is exactly when a caller has to know
-    /// how far the list goes.
     ///
-    /// `GET /api/v1/lists`, needs `lists:read`
-    page<ListEntry> list_my_list(const ListMyListRequest& in) const {
-        const std::string path = "/api/v1/lists";
+    /// `GET /api/v1/progress/{shikimori_id}`, needs `lists:read`
+    Progress get_progress(const GetProgressRequest& in) const {
+        std::string path = "/api/v1/progress/{shikimori_id}";
+        replace_in(path, "{shikimori_id}", detail::urlencode(std::to_string(in.shikimori_id)));
+        return core_->call("GET", path, std::string{}, std::string{}, false).get<Progress>();
+    }
+
+    ///
+    /// `GET /api/v1/folders/{code}/items`, needs `lists:read`
+    page<FolderItem> list_folder_items(const ListFolderItemsRequest& in) const {
+        std::string path = "/api/v1/folders/{code}/items";
+        replace_in(path, "{code}", detail::urlencode(in.code));
         query_string query;
-        query.add("status", in.status);
-        query.add("limit", in.limit);
-        query.add("offset", in.offset);
-        return core_->call("GET", path, query.str(), std::string{}, false).get<page<ListEntry>>();
+        query.add("q", in.q);
+        return core_->call("GET", path, query.str(), std::string{}, false).get<page<FolderItem>>();
     }
 
-    /// Every row, gathered a page at a time.
     ///
-    /// Stops when a page comes back shorter than it asked for rather than
-    /// when `total` is reached: the list can grow while it is being read, and
-    /// counting against a number from the first page walks off the end.
-    ///
-    /// A vector rather than a lazy range, and that is a choice: a coroutine
-    /// generator would need C++23 or a dependency, and a callback would put
-    /// the caller inside somebody else's loop. The `on_page` hook is there
-    /// for whoever cannot hold the whole list.
-    std::vector<ListEntry> list_my_list_all(ListMyListRequest in, const std::function<bool(const page<ListEntry>&)>& on_page = {}) const {
-        std::vector<ListEntry> all;
-        const std::int64_t window = in.limit.value_or(100);
-        std::int64_t at = in.offset.value_or(0);
-        for (;;) {
-            in.limit = window;
-            in.offset = at;
-            auto got = list_my_list(in);
-            const auto seen = static_cast<std::int64_t>(got.items.size());
-            if (on_page && !on_page(got)) return all;
-            all.insert(all.end(), got.items.begin(), got.items.end());
-            if (seen < window) return all;
-            at += seen;
-        }
+    /// `GET /api/v1/folders`, needs `lists:read`
+    page<Folder> list_my_folders() const {
+        const std::string path = "/api/v1/folders";
+        return core_->call("GET", path, std::string{}, std::string{}, false).get<page<Folder>>();
     }
 
-    /// The same `plans::domain::rate` the site calls, so the two doors cannot come
-    /// to disagree about what a score is — which is the whole reason the domain
-    /// exists. What differs is what this surface always differs by: 404 where the
-    /// site answers 204 for a delete that removed nothing.
     ///
-    /// `PUT /api/v1/lists/{shikimori_id}/score`, needs `lists:write`
-    ListEntry rate_list_entry(const RateListEntryRequest& in) const {
-        std::string path = "/api/v1/lists/{shikimori_id}/score";
+    /// `PUT /api/v1/progress/{shikimori_id}/score`, needs `lists:write`
+    Progress rate_title(const RateTitleRequest& in) const {
+        std::string path = "/api/v1/progress/{shikimori_id}/score";
         replace_in(path, "{shikimori_id}", detail::urlencode(std::to_string(in.shikimori_id)));
-        return core_->call("PUT", path, std::string{}, nlohmann::json(in.body).dump(), true).get<ListEntry>();
+        return core_->call("PUT", path, std::string{}, nlohmann::json(in.body).dump(), true).get<Progress>();
     }
 
     ///
-    /// `DELETE /api/v1/collections/{code}/items/{shikimori_id}`, needs `lists:write`
-    void remove_collection_item(const RemoveCollectionItemRequest& in) const {
-        std::string path = "/api/v1/collections/{code}/items/{shikimori_id}";
+    /// `DELETE /api/v1/folders/{code}/items/{shikimori_id}`, needs `lists:write`
+    void remove_folder_item(const RemoveFolderItemRequest& in) const {
+        std::string path = "/api/v1/folders/{code}/items/{shikimori_id}";
         replace_in(path, "{code}", detail::urlencode(in.code));
         replace_in(path, "{shikimori_id}", detail::urlencode(std::to_string(in.shikimori_id)));
         core_->call("DELETE", path, std::string{}, std::string{}, false);
     }
 
     ///
-    /// `DELETE /api/v1/lists/{shikimori_id}`, needs `lists:write`
-    void remove_list_entry(const RemoveListEntryRequest& in) const {
-        std::string path = "/api/v1/lists/{shikimori_id}";
+    /// `PUT /api/v1/progress/{shikimori_id}`, needs `lists:write`
+    Progress set_progress(const SetProgressRequest& in) const {
+        std::string path = "/api/v1/progress/{shikimori_id}";
         replace_in(path, "{shikimori_id}", detail::urlencode(std::to_string(in.shikimori_id)));
-        core_->call("DELETE", path, std::string{}, std::string{}, false);
+        return core_->call("PUT", path, std::string{}, nlohmann::json(in.body).dump(), true).get<Progress>();
     }
 
     ///
-    /// `PUT /api/v1/lists/{shikimori_id}`, needs `lists:write`
-    ListEntry save_list_entry(const SaveListEntryRequest& in) const {
-        std::string path = "/api/v1/lists/{shikimori_id}";
-        replace_in(path, "{shikimori_id}", detail::urlencode(std::to_string(in.shikimori_id)));
-        return core_->call("PUT", path, std::string{}, nlohmann::json(in.body).dump(), true).get<ListEntry>();
-    }
-
-    ///
-    /// `DELETE /api/v1/lists/{shikimori_id}/score`, needs `lists:write`
-    void unrate_list_entry(const UnrateListEntryRequest& in) const {
-        std::string path = "/api/v1/lists/{shikimori_id}/score";
+    /// `DELETE /api/v1/progress/{shikimori_id}/score`, needs `lists:write`
+    void unrate_title(const UnrateTitleRequest& in) const {
+        std::string path = "/api/v1/progress/{shikimori_id}/score";
         replace_in(path, "{shikimori_id}", detail::urlencode(std::to_string(in.shikimori_id)));
         core_->call("DELETE", path, std::string{}, std::string{}, false);
     }

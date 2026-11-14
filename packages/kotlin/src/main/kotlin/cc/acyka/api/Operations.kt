@@ -405,10 +405,13 @@ public class People internal constructor(private val core: Core) {
         )
     }
 
-    public suspend fun userCollections(nick: String): Page<Collection> {
+    /**
+     * Somebody's public folders, behind the audience they chose for folders.
+     */
+    public suspend fun userFolders(nick: String): Page<Folder> {
         return core.call(
             method = "GET",
-            path = "/api/v1/users/${urlencode(nick.toString())}/collections",
+            path = "/api/v1/users/${urlencode(nick.toString())}/folders",
         )
     }
 
@@ -470,39 +473,6 @@ public class People internal constructor(private val core: Core) {
         }
     }
 
-    /**
-     * What somebody is watching, if their list is anybody's business.
-     */
-    public suspend fun userLists(nick: String, status: String? = null, limit: Long? = null, offset: Long? = null): Page<ListEntry> {
-        return core.call(
-            method = "GET",
-            path = "/api/v1/users/${urlencode(nick.toString())}/lists",
-            query = listOf(
-                "status" to status,
-                "limit" to limit,
-                "offset" to offset,
-            ),
-        )
-    }
-
-    /**
-     * Every row of [userLists], a page at a time.
-     *
-     * Stops when a page comes back shorter than it asked for rather than
-     * when `total` is reached: the list can grow while it is being read, and
-     * counting against a number from the first page walks off the end.
-     */
-    public fun userListsAll(nick: String, status: String? = null, limit: Long? = null, offset: Long? = null): Flow<ListEntry> = flow {
-        val window = limit ?: 100
-        var at = offset ?: 0
-        while (true) {
-            val page = userLists(limit = window, offset = at, nick = nick, status = status)
-            page.items.forEach { emit(it) }
-            if (page.items.size < window) return@flow
-            at += page.items.size
-        }
-    }
-
     public suspend fun userStats(nick: String): Stats {
         return core.call(
             method = "GET",
@@ -512,125 +482,99 @@ public class People internal constructor(private val core: Core) {
 }
 
 /**
- * somebody's own list and shelves
+ * somebody's own folders and how far through each title they are
  */
 public class Library internal constructor(private val core: Core) {
 
-    public suspend fun addCollectionItem(code: String, shikimoriId: Int, body: EntryBody): CollectionItem {
+    public suspend fun addFolderItem(code: String, shikimoriId: Int, body: ItemBody): Unit {
         return core.call(
             method = "PUT",
-            path = "/api/v1/collections/${urlencode(code.toString())}/items/${urlencode(shikimoriId.toString())}",
+            path = "/api/v1/folders/${urlencode(code.toString())}/items/${urlencode(shikimoriId.toString())}",
             body = body,
         )
     }
 
-    public suspend fun collectionItems(code: String): Page<CollectionItem> {
-        return core.call(
-            method = "GET",
-            path = "/api/v1/collections/${urlencode(code.toString())}/items",
-        )
-    }
-
-    public suspend fun createCollection(body: CollectionBody): Collection {
+    public suspend fun createFolder(body: FolderBody): Folder {
         return core.call(
             method = "POST",
-            path = "/api/v1/collections",
+            path = "/api/v1/folders",
             body = body,
         )
     }
 
-    public suspend fun getCollection(code: String): Collection {
+    public suspend fun deleteFolder(code: String): Unit {
         return core.call(
-            method = "GET",
-            path = "/api/v1/collections/${urlencode(code.toString())}",
+            method = "DELETE",
+            path = "/api/v1/folders/${urlencode(code.toString())}",
         )
     }
 
-    public suspend fun listMyCollections(): Page<Collection> {
+    public suspend fun editFolder(code: String, body: FolderPatch): Folder {
         return core.call(
-            method = "GET",
-            path = "/api/v1/collections",
+            method = "PATCH",
+            path = "/api/v1/folders/${urlencode(code.toString())}",
+            body = body,
         )
     }
 
-    /**
-     * It used to answer the whole thing, which is the bug this api's own rules
-     * already name: a caller with four hundred titles got four hundred rows and a
-     * caller with four thousand got four thousand, and the only reason nobody was
-     * hurt by it is that nobody was using this door. `total` is beside the items
-     * because the paging is by offset, which is exactly when a caller has to know
-     * how far the list goes.
-     */
-    public suspend fun listMyList(status: String? = null, limit: Long? = null, offset: Long? = null): Page<ListEntry> {
+    public suspend fun getFolder(code: String): Folder {
         return core.call(
             method = "GET",
-            path = "/api/v1/lists",
+            path = "/api/v1/folders/${urlencode(code.toString())}",
+        )
+    }
+
+    public suspend fun getProgress(shikimoriId: Int): Progress {
+        return core.call(
+            method = "GET",
+            path = "/api/v1/progress/${urlencode(shikimoriId.toString())}",
+        )
+    }
+
+    public suspend fun listFolderItems(code: String, q: String? = null): Page<FolderItem> {
+        return core.call(
+            method = "GET",
+            path = "/api/v1/folders/${urlencode(code.toString())}/items",
             query = listOf(
-                "status" to status,
-                "limit" to limit,
-                "offset" to offset,
+                "q" to q,
             ),
         )
     }
 
-    /**
-     * Every row of [listMyList], a page at a time.
-     *
-     * Stops when a page comes back shorter than it asked for rather than
-     * when `total` is reached: the list can grow while it is being read, and
-     * counting against a number from the first page walks off the end.
-     */
-    public fun listMyListAll(status: String? = null, limit: Long? = null, offset: Long? = null): Flow<ListEntry> = flow {
-        val window = limit ?: 100
-        var at = offset ?: 0
-        while (true) {
-            val page = listMyList(limit = window, offset = at, status = status)
-            page.items.forEach { emit(it) }
-            if (page.items.size < window) return@flow
-            at += page.items.size
-        }
+    public suspend fun listMyFolders(): Page<Folder> {
+        return core.call(
+            method = "GET",
+            path = "/api/v1/folders",
+        )
     }
 
-    /**
-     * The same `plans::domain::rate` the site calls, so the two doors cannot come
-     * to disagree about what a score is — which is the whole reason the domain
-     * exists. What differs is what this surface always differs by: 404 where the
-     * site answers 204 for a delete that removed nothing.
-     */
-    public suspend fun rateListEntry(shikimoriId: Int, body: ScoreBody): ListEntry {
+    public suspend fun rateTitle(shikimoriId: Int, body: ScoreBody): Progress {
         return core.call(
             method = "PUT",
-            path = "/api/v1/lists/${urlencode(shikimoriId.toString())}/score",
+            path = "/api/v1/progress/${urlencode(shikimoriId.toString())}/score",
             body = body,
         )
     }
 
-    public suspend fun removeCollectionItem(code: String, shikimoriId: Int): Unit {
+    public suspend fun removeFolderItem(code: String, shikimoriId: Int): Unit {
         return core.call(
             method = "DELETE",
-            path = "/api/v1/collections/${urlencode(code.toString())}/items/${urlencode(shikimoriId.toString())}",
+            path = "/api/v1/folders/${urlencode(code.toString())}/items/${urlencode(shikimoriId.toString())}",
         )
     }
 
-    public suspend fun removeListEntry(shikimoriId: Int): Unit {
-        return core.call(
-            method = "DELETE",
-            path = "/api/v1/lists/${urlencode(shikimoriId.toString())}",
-        )
-    }
-
-    public suspend fun saveListEntry(shikimoriId: Int, body: ListBody): ListEntry {
+    public suspend fun setProgress(shikimoriId: Int, body: EpisodeBody): Progress {
         return core.call(
             method = "PUT",
-            path = "/api/v1/lists/${urlencode(shikimoriId.toString())}",
+            path = "/api/v1/progress/${urlencode(shikimoriId.toString())}",
             body = body,
         )
     }
 
-    public suspend fun unrateListEntry(shikimoriId: Int): Unit {
+    public suspend fun unrateTitle(shikimoriId: Int): Unit {
         return core.call(
             method = "DELETE",
-            path = "/api/v1/lists/${urlencode(shikimoriId.toString())}/score",
+            path = "/api/v1/progress/${urlencode(shikimoriId.toString())}/score",
         )
     }
 }
