@@ -15,6 +15,9 @@
 	 * the rail goes back to being a table of contents.
 	 */
 	import { page } from '$app/state';
+	import { onNavigate } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { installPress } from '@cyka/ui';
 	import IconSearch from '@tabler/icons-svelte/icons/search';
 	import IconMenu from '@tabler/icons-svelte/icons/menu-2';
 	import IconX from '@tabler/icons-svelte/icons/x';
@@ -28,7 +31,15 @@
 	let {
 		data,
 		children
-	}: { data: { rail: Group[]; found: Found[] }; children: import('svelte').Snippet } = $props();
+	}: { data: { rail?: Group[]; found?: Found[] }; children: import('svelte').Snippet } = $props();
+
+	/*
+	 * Empty where the build wrote no data — the one page that is not
+	 * prerendered, `404.html`, renders in the browser for an address nothing
+	 * was written for, and has the frame but none of the frame's data.
+	 */
+	const rail = $derived(data.rail ?? []);
+	const found = $derived(data.found ?? []);
 
 	let open = $state(false);
 	let searching = $state(false);
@@ -48,7 +59,7 @@
 	 * marks every guide as well as itself.
 	 */
 	const here = $derived.by(() => {
-		const all = data.rail.flatMap((g) => g.links);
+		const all = rail.flatMap((g) => g.links);
 		return (
 			all.find((l) => l.href === at) ??
 			all
@@ -75,6 +86,28 @@
 			document
 				.querySelector('.rail a[aria-current="page"]')
 				?.scrollIntoView({ block: 'nearest' });
+		});
+	});
+
+	// every control gives a little under a press, as on acyka.cc — the kit's one listener
+	onMount(() => installPress());
+
+	/*
+	 * Moving between pages is a view transition: the kit's `page-out`/`page-in`
+	 * (an opacity fade and a four-pixel lift), with the bar and the rail named
+	 * so they hold still while only the page changes. A move inside one page —
+	 * an anchor, a `?op=` in the playground — is not a page change and is left
+	 * alone, and so is everything when the reader asked for less motion.
+	 */
+	onNavigate((navigation) => {
+		if (!('startViewTransition' in document)) return;
+		if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		if (navigation.to?.url.pathname === navigation.from?.url.pathname) return;
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
 		});
 	});
 
@@ -168,7 +201,7 @@
 					<a href="/playground">Playground</a>
 				</nav>
 
-				{#each data.rail as group (group.label)}
+				{#each rail as group (group.label)}
 					<div class="group">
 						<p class="label">{group.label}</p>
 						{#each group.links as link (link.href)}
@@ -211,7 +244,7 @@
 	</footer>
 </div>
 
-<Palette bind:open={searching} found={data.found} />
+<Palette bind:open={searching} {found} />
 
 <style>
 	.frame {
@@ -226,6 +259,8 @@
 		position: sticky;
 		top: 0;
 		z-index: 30;
+		/* holds still while the page under it changes */
+		view-transition-name: topbar;
 		display: flex;
 		align-items: center;
 		gap: var(--s-3);
@@ -267,6 +302,14 @@
 
 	.brand:hover {
 		text-decoration: none;
+	}
+
+	.brand img {
+		transition: transform 420ms var(--ease-press-release, var(--ease));
+	}
+
+	.brand:hover img {
+		transform: rotate(-8deg) scale(1.06);
 	}
 
 	.name {
@@ -562,6 +605,8 @@
 		}
 
 		.rail {
+			/* the kit holds a `rail` still across a page change */
+			view-transition-name: rail;
 			/* sticky rather than fixed: a fixed rail on a short viewport puts its
 			   own last item below the fold with nothing to scroll */
 			position: sticky;

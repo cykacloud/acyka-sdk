@@ -31,7 +31,7 @@
 </svelte:head>
 
 <article class="prose guide">
-	<header>
+	<header class="rise">
 		<p class="eyebrow">Guide{at >= 0 ? ` · ${at + 1} of ${GUIDES.length}` : ''}</p>
 		<h1>{title}</h1>
 		<p class="lede">{lede}</p>

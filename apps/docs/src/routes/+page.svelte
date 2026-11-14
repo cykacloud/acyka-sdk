@@ -88,7 +88,7 @@
 	<section class="hero">
 		<div class="glow" aria-hidden="true"></div>
 
-		<div class="say">
+		<div class="say rise">
 			<a class="pill" href="/docs/libraries">
 				<span class="dot"></span>
 				Six client libraries, one contract
@@ -121,16 +121,16 @@
 			{/if}
 		</div>
 
-		<div class="show">
+		<div class="show rise" style="--d: 120ms">
 			<Samples samples={data.first} />
 		</div>
 	</section>
 
-	<section class="numbers" aria-label="At a glance">
-		<a href="/reference"><strong>{data.counts.operations}</strong><span>operations</span></a>
-		<a href="/reference"><strong>{data.counts.models}</strong><span>shapes</span></a>
-		<a href="/docs/libraries"><strong>6</strong><span>languages</span></a>
-		<a href="/docs/scopes"><strong>{data.counts.scopes}</strong><span>scopes</span></a>
+	<section class="numbers stagger" aria-label="At a glance" style="--d: 200ms">
+		<a href="/reference" style="--i: 0"><strong>{data.counts.operations}</strong><span>operations</span></a>
+		<a href="/reference" style="--i: 1"><strong>{data.counts.models}</strong><span>shapes</span></a>
+		<a href="/docs/libraries" style="--i: 2"><strong>6</strong><span>languages</span></a>
+		<a href="/docs/scopes" style="--i: 3"><strong>{data.counts.scopes}</strong><span>scopes</span></a>
 	</section>
 
 	<section class="cards">
@@ -143,10 +143,10 @@
 			</p>
 		</header>
 
-		<div class="grid">
-			{#each CARDS as card (card.href)}
+		<div class="grid stagger" style="--d: 260ms">
+			{#each CARDS as card, i (card.href)}
 				{@const Icon = card.icon}
-				<a class="card" href={card.href}>
+				<a class="card" href={card.href} style="--i: {i}">
 					<span class="mark"><Icon size={20} stroke={1.7} /></span>
 					<h3>{card.title}</h3>
 					<p>{card.text}</p>
@@ -156,18 +156,18 @@
 		</div>
 	</section>
 
-	<section class="three">
-		<a class="big" href="/docs">
+	<section class="three stagger" style="--d: 420ms">
+		<a class="big" href="/docs" style="--i: 0">
 			<IconBook size={22} stroke={1.6} />
 			<h3>Guides</h3>
 			<p>From registering an application to the first call in about two minutes, then everything after it.</p>
 		</a>
-		<a class="big" href="/reference">
+		<a class="big" href="/reference" style="--i: 1">
 			<IconCode size={22} stroke={1.6} />
 			<h3>Reference</h3>
 			<p>Every operation with the call in seven languages, an example answer, and every shape inside it.</p>
 		</a>
-		<a class="big" href="/playground">
+		<a class="big" href="/playground" style="--i: 2">
 			<IconPlayerPlay size={22} stroke={1.6} />
 			<h3>Playground</h3>
 			<p>Sign in and call the live api from this tab — the same request your own application will make.</p>
@@ -196,6 +196,7 @@
 	}
 
 	.glow {
+		animation: drift 14s var(--ease-soft, ease-in-out) infinite alternate;
 		position: absolute;
 		inset: -160px -20% auto;
 		height: 520px;
@@ -351,6 +352,15 @@
 
 	.show :global(pre) {
 		min-height: 18rem;
+	}
+
+	@keyframes drift {
+		from {
+			transform: translate3d(-2%, 0, 0) scale(1);
+		}
+		to {
+			transform: translate3d(3%, 2%, 0) scale(1.08);
+		}
 	}
 
 	/* --- the numbers --------------------------------------------------------- */
@@ -558,6 +568,10 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+		.glow {
+			animation: none;
+		}
+
 		.card,
 		.big,
 		.doors a {

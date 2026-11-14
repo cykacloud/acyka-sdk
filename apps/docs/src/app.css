@@ -350,3 +350,45 @@ kbd {
 .warn > * {
 	margin: 0;
 }
+
+/* --- motion ----------------------------------------------------------------- */
+
+/*
+ * The page change is the kit's (motion.css: `page-out`, then `page-in`); the
+ * bar holds still on top of it, the way the rail does.
+ */
+::view-transition-group(topbar),
+::view-transition-old(topbar),
+::view-transition-new(topbar) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+/*
+ * The rail when it is on only one side of a move — into the front page or the
+ * playground, which have none, or out of them. The kit holds a named piece
+ * still with `animation: none`, which is right for a rail on both pages and
+ * wrong for one on a single page: with nothing to animate, the old picture sat
+ * on top of the new page, opaque, for the length of the transition. A rail that
+ * is leaving fades with the page; one that is arriving fades in with it.
+ */
+::view-transition-old(rail):only-child {
+	animation: page-out 150ms var(--ease-in) both;
+}
+
+::view-transition-new(rail):only-child {
+	animation: page-in 260ms var(--ease-out) 40ms both;
+}
+
+/* the same stagger, wherever a page lists cards: each a beat after the last */
+.stagger > * {
+	animation: rise 460ms var(--ease-out) backwards;
+	animation-delay: calc(var(--i, 0) * 45ms + var(--d, 0ms));
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.stagger > *,
+	.rise {
+		animation: none;
+	}
+}
