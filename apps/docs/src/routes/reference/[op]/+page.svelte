@@ -44,6 +44,7 @@
 	const query = $derived(op.params.filter((p) => p.where === 'query'));
 	const path = $derived(op.params.filter((p) => p.where === 'path'));
 	const address = $derived(op.path.replace('/api/v1', ''));
+	const drawn = $derived(data.shapes.map((s) => s.name));
 </script>
 
 <svelte:head>
@@ -107,6 +108,7 @@
 						fields={path.map((p) => ({ name: p.name, ty: p.ty, optional: false, doc: p.doc }))}
 						language={types}
 						asking
+						{drawn}
 					/>
 				{/if}
 
@@ -121,13 +123,14 @@
 						}))}
 						language={types}
 						asking
+						{drawn}
 					/>
 				{/if}
 
 				{#if op.body}
 					<h3 id="body">The body</h3>
 					<p>
-						<a href="#shape-{op.body.model}"><code>{op.body.model}</code></a>, sent as JSON{op.body
+						{#if drawn.includes(op.body.model)}<a href="#shape-{op.body.model}"><code>{op.body.model}</code></a>{:else}<code>{op.body.model}</code>{/if}, sent as JSON{op.body
 							.required
 							? ''
 							: ', and optional'}.
@@ -170,7 +173,7 @@
 						{#each (shape.doc ?? '').split('\n\n').filter(Boolean) as text, i (i)}
 							<p>{@html inline(text)}</p>
 						{/each}
-						<Fields fields={shape.fields} language={types} />
+						<Fields fields={shape.fields} language={types} {drawn} />
 					</section>
 				{/each}
 			{/if}

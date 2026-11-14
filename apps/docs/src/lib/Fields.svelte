@@ -20,15 +20,18 @@
 		fields,
 		language,
 		/** for parameters: "required" is the news, rather than "may be absent" */
-		asking = false
-	}: { fields: Field[]; language: Language; asking?: boolean } = $props();
+		asking = false,
+		/** the shapes this page draws; a type is a link only to one of them */
+		drawn = []
+	}: { fields: Field[]; language: Language; asking?: boolean; drawn?: string[] } = $props();
 
 	const renames = $derived(language === 'kotlin' || language === 'csharp');
 </script>
 
 <ul class="fields">
 	{#each fields as field (field.name)}
-		{@const shape = links(field.ty)}
+		{@const named = links(field.ty)}
+		{@const shape = named && drawn.includes(named) ? named : undefined}
 		{@const spelled = written(field.ty, language)}
 		{@const shown = field.optional && !asking ? optional(spelled, language) : spelled}
 		<li>

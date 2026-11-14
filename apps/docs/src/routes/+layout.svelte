@@ -31,7 +31,15 @@
 	let {
 		data,
 		children
-	}: { data: { rail: Group[]; found: Found[] }; children: import('svelte').Snippet } = $props();
+	}: { data: { rail?: Group[]; found?: Found[] }; children: import('svelte').Snippet } = $props();
+
+	/*
+	 * Empty where the build wrote no data — the one page that is not
+	 * prerendered, `404.html`, renders in the browser for an address nothing
+	 * was written for, and has the frame but none of the frame's data.
+	 */
+	const rail = $derived(data.rail ?? []);
+	const found = $derived(data.found ?? []);
 
 	let open = $state(false);
 	let searching = $state(false);
@@ -51,7 +59,7 @@
 	 * marks every guide as well as itself.
 	 */
 	const here = $derived.by(() => {
-		const all = data.rail.flatMap((g) => g.links);
+		const all = rail.flatMap((g) => g.links);
 		return (
 			all.find((l) => l.href === at) ??
 			all
@@ -193,7 +201,7 @@
 					<a href="/playground">Playground</a>
 				</nav>
 
-				{#each data.rail as group (group.label)}
+				{#each rail as group (group.label)}
 					<div class="group">
 						<p class="label">{group.label}</p>
 						{#each group.links as link (link.href)}
@@ -236,7 +244,7 @@
 	</footer>
 </div>
 
-<Palette bind:open={searching} found={data.found} />
+<Palette bind:open={searching} {found} />
 
 <style>
 	.frame {

@@ -15,7 +15,6 @@ stages:
 variables:
   DOTNET_CLI_TELEMETRY_OPTOUT: '1'
   DOTNET_NOLOGO: '1'
-  DOCS_IMAGE: $CI_REGISTRY_IMAGE/docs
 
 workflow:
   rules:
@@ -193,38 +192,32 @@ docs:
         echo 'ERROR: shiki is in the client bundle. Colouring happens in a server loader.' >&2
         exit 1
       fi
+  # On main the pages this built are the site: `deploy` below ships them as
+  # they are, so what was checked is byte for byte what is served.
+  artifacts:
+    paths:
+      - apps/docs/build
+    expire_in: 1 week
   after_script:
     - rm -rf "$CI_PROJECT_DIR/.kit"
 
 # ---------------------------------------------------------------------------
 # dev.acyka.cc
 
-# `image` is a reserved word at the top level, so the job that builds one
-# cannot be called that — GitLab reads it as the global image config and says
-# "image name can't be blank", which points at nothing.
-images:
-  stage: build
-  tags: [heavy]
-  image: $CI_REGISTRY/acyka/ci/base:latest
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_PIPELINE_SOURCE == 'web'
-  variables:
-    IMAGE: $DOCS_IMAGE
-    IMAGE_PUSH: '1'
-  script:
-    # `build-image` is acyka/ci's, baked into the base image: it builds on the
-    # runner's BuildKit (a job does not get the host's docker), takes the
-    # registry credential in its own process with `DOCKER_AUTH_CONFIG` unset,
-    # hands the build `CYKA_NPM_TOKEN` as the `npm_token` secret, and pushes
-    # `:latest` and `:<sha>` — which is everything this job used to spell out.
-    - build-image docs . apps/docs/Dockerfile 6gb
-
+# Files, not a process. Every page is prerendered by the `docs` job above
+# (adapter-static), so the site is a directory: this copies it to the box as a
+# release of its own and points `current` at it in one rename, and Caddy serves
+# `/opt/acyka/docs/current` straight from disk. There is no container to pull,
+# no port, nothing to restart — and a reader in the middle of a deploy is served
+# either the old site whole or the new one whole, never half of each.
+#
+# The last five releases stay, so going back is the same rename by hand:
+#   ln -sfn releases/<sha> /opt/acyka/docs/current.next && mv -T …current.next …current
 deploy:
   stage: deploy
   tags: [heavy]
   image: $CI_REGISTRY/acyka/ci/base:latest
-  needs: [images]
+  needs: [docs]
   resource_group: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -233,9 +226,6 @@ deploy:
     name: dev
     url: https://dev.acyka.cc
   script:
-    # Three things this needs and cannot invent. Without them the image is
-    # built and pushed and nothing told the server to pull it — a green
-    # pipeline in front of an unchanged site.
     - |
       missing=''
       [ -n "$SSH_HOST" ] || missing="$missing SSH_HOST"
@@ -245,6 +235,8 @@ deploy:
         echo "ERROR: not set on this project:$missing — they are the same three values acyka/acyka deploys with, and they are group variables now." >&2
         exit 1
       fi
+    - |
+      test -f apps/docs/build/index.html || { echo "ERROR: the docs job left no site behind" >&2; exit 1; }
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
     - printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
     - |
@@ -253,25 +245,20 @@ deploy:
         echo "keyscan attempt $i found nothing, trying again"; sleep 6
         [ "$i" = 3 ] && { echo "could not read the host key after three tries" >&2; exit 1; }
       done
-    - echo "$REGISTRY_PULL_TOKEN" | ssh "$SSH_USER@$SSH_HOST" "docker login $CI_REGISTRY -u $REGISTRY_PULL_USER --password-stdin"
-    # The docs run inside the site's own stack, behind its profile, so this
-    # names the one service and touches nothing else.
     - |
-      ssh -o ServerAliveInterval=10 "$SSH_USER@$SSH_HOST" "cd /opt/acyka \
-        && export DOCS_IMAGE='$DOCS_IMAGE:$CI_COMMIT_SHA' \
-        && docker compose --profile docs pull docs \
-        && docker compose --profile docs up -d --no-build docs \
-        && docker image prune -f"
+      tar -C apps/docs/build -czf - . | ssh -o ServerAliveInterval=10 "$SSH_USER@$SSH_HOST" "set -e
+        d=/opt/acyka/docs; r=\$d/releases/$CI_COMMIT_SHA
+        mkdir -p \$r && tar -xzf - -C \$r && chmod -R a+rX \$r
+        ln -sfn releases/$CI_COMMIT_SHA \$d/current.next && mv -T \$d/current.next \$d/current
+        ls -1dt \$d/releases/* | tail -n +6 | xargs -r rm -rf"
     - |
       ok=""
-      for i in $(seq 1 30); do
-        code=$(curl -s --max-time 25 -o /dev/null -w '%{http_code}' https://dev.acyka.cc/ || true)
-        if [ "$code" = "200" ]; then echo "healthy after ${i}0s"; ok=1; break; fi
+      for i in $(seq 1 18); do
+        code=$(curl -s --max-time 20 -o /dev/null -w '%{http_code}' https://dev.acyka.cc/ || true)
+        if [ "$code" = "200" ]; then echo "serving after ${i}0s"; ok=1; break; fi
         sleep 10
       done
-      [ -n "$ok" ] || { echo "still not healthy" >&2; exit 1; }
-  after_script:
-    - ssh "$SSH_USER@$SSH_HOST" "docker logout $CI_REGISTRY" || true
+      [ -n "$ok" ] || { echo "dev.acyka.cc is not answering" >&2; exit 1; }
 
 # ---------------------------------------------------------------------------
 # The six, on a tag

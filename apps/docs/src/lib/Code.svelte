@@ -34,7 +34,7 @@
 <figure class:flush>
 	{#if label || bar}
 		<div class="bar">
-			{#if bar}{@render bar()}{:else}<figcaption>{label}</figcaption>{/if}
+			{#if bar}{@render bar()}{:else}<span class="caption">{label}</span>{/if}
 			<span class="copy-in">
 				<CopyButton value={code} onfail={() => toast('could not copy', 'error')} />
 			</span>
@@ -84,7 +84,7 @@
 		background: color-mix(in oklab, var(--surface) 55%, transparent);
 	}
 
-	figcaption {
+	.caption {
 		font-family: var(--font-mono);
 		font-size: 12px;
 		color: var(--text-muted);
